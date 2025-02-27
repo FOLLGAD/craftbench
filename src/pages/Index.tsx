@@ -294,24 +294,24 @@ const Index = () => {
               <pre 
                 className="bg-gray-50 p-2 rounded text-xs cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => setCode(HOUSE_EXAMPLE)}
-              >
+              >`
                 // Create a small house
                 fill(0, 0, 0, 6, 0, 6, 'stone');
                 fill(0, 1, 0, 6, 3, 0, 'wood');
                 // ... more code
-              </pre>
+              `</pre>
               
               <pre 
                 className="bg-gray-50 p-2 rounded text-xs cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => setCode(PYRAMID_EXAMPLE)}
-              >
+              >`
                 // Create a pyramid
                 const size = 10;
                 for (let y = 0; y < size; y++) {
                   const width = size - y;
                   fill(-width, y, -width, width, y, width, 'sand');
                 }
-              </pre>
+              `</pre>
             </div>
           </div>
         </div>
