@@ -3,9 +3,10 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { DEFAULT_CODE_PROMPT, HOUSE_EXAMPLE, PYRAMID_EXAMPLE } from "@/constants/codeExamples";
 
 const Index = () => {
-  const [code, setCode] = useState("// Try this example:\n// fill(0, 0, 0, 5, 5, 5, 'grass');\n// setBlock(0, 6, 0, 'stone');");
+  const [code, setCode] = useState(DEFAULT_CODE_PROMPT);
   const [isRunning, setIsRunning] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<any>(null);
@@ -264,7 +265,7 @@ const Index = () => {
               {["grass", "stone", "dirt", "wood", "water", "sand", "glass", "gold"].map(block => (
                 <div 
                   key={block}
-                  className="flex items-center gap-2 bg-gray-50 p-2 rounded"
+                  className="flex items-center gap-2 bg-gray-50 p-2 rounded cursor-pointer hover:bg-gray-100"
                   onClick={() => setCode(code => `${code}\nsetBlock(0, 0, 0, '${block}');`)}
                 >
                   <div 
@@ -292,7 +293,7 @@ const Index = () => {
             <div className="space-y-2">
               <pre 
                 className="bg-gray-50 p-2 rounded text-xs cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => setCode("// Create a small house\n\n// Foundation\nfill(0, 0, 0, 6, 0, 6, 'stone');\n\n// Walls\nfill(0, 1, 0, 6, 3, 0, 'wood'); // Front wall\nfill(0, 1, 6, 6, 3, 6, 'wood'); // Back wall\nfill(0, 1, 0, 0, 3, 6, 'wood'); // Left wall\nfill(6, 1, 0, 6, 3, 6, 'wood'); // Right wall\n\n// Door\nfill(3, 1, 0, 3, 2, 0, 'glass');\n\n// Windows\nsetBlock(1, 2, 0, 'glass');\nsetBlock(5, 2, 0, 'glass');\n\n// Roof\nfor (let i = 0; i <= 6; i++) {\n  fill(0, 4, i, 6, 4, i, 'stone');\n}")}
+                onClick={() => setCode(HOUSE_EXAMPLE)}
               >
                 // Create a small house
                 fill(0, 0, 0, 6, 0, 6, 'stone');
@@ -302,7 +303,7 @@ const Index = () => {
               
               <pre 
                 className="bg-gray-50 p-2 rounded text-xs cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => setCode("// Create a pyramid\nconst size = 10;\n\nfor (let y = 0; y < size; y++) {\n  const width = size - y;\n  fill(-width, y, -width, width, y, width, 'sand');\n}")}
+                onClick={() => setCode(PYRAMID_EXAMPLE)}
               >
                 // Create a pyramid
                 const size = 10;
