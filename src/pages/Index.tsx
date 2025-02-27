@@ -219,33 +219,34 @@ const Index = () => {
   };
   
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-hidden flex flex-col">
-      <header className="bg-black text-white p-4 shadow-md">
-        <h1 className="text-xl font-medium">Voxel Sculptor</h1>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
+      <header className="bg-black text-white p-4 shadow-md z-10 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Voxel Sculptor</h1>
+        <p className="text-sm text-gray-300">Build your blocky world with code</p>
       </header>
       
-      <div className="flex flex-col lg:flex-row h-full gap-4 p-4">
+      <div className="flex flex-col lg:flex-row h-full gap-6 p-6">
         {/* Left side - Code editor */}
-        <div className="w-full lg:w-1/3 flex flex-col gap-4">
-          <div className="bg-white rounded-lg shadow-sm border p-4 overflow-hidden">
-            <h2 className="text-lg font-medium mb-2">JavaScript Code</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Use <code className="bg-gray-100 px-1 rounded">setBlock(x, y, z, "block-name")</code> and <code className="bg-gray-100 px-1 rounded">fill(x1, y1, z1, x2, y2, z2, "block-name")</code> to build your scene.
+        <div className="w-full lg:w-1/3 flex flex-col gap-5">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5 overflow-hidden">
+            <h2 className="text-xl font-bold mb-3 text-gray-800">JavaScript Code</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Use <code className="bg-gray-100 px-2 py-1 rounded font-mono text-purple-700">setBlock(x, y, z, "block-name")</code> and <code className="bg-gray-100 px-2 py-1 rounded font-mono text-purple-700">fill(x1, y1, z1, x2, y2, z2, "block-name")</code> to build your scene.
             </p>
             
             <Textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="font-mono text-sm h-[300px] resize-none bg-gray-50"
+              className="font-mono text-sm h-[300px] resize-none bg-gray-50 border-gray-300 focus:border-purple-400 focus:ring-purple-300"
               placeholder="// Enter your code here"
             />
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button 
               onClick={executeCode} 
               disabled={isRunning}
-              className="flex-1 bg-black hover:bg-gray-800 text-white"
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-all duration-200 shadow-md"
             >
               {isRunning ? "Running..." : "Run Code"}
             </Button>
@@ -253,23 +254,23 @@ const Index = () => {
             <Button 
               onClick={clearBlocks} 
               variant="outline"
-              className="flex-1"
+              className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-100"
             >
               Clear Scene
             </Button>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <h2 className="text-lg font-medium mb-2">Block Types</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5">
+            <h2 className="text-xl font-bold mb-3 text-gray-800">Block Types</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {["grass", "stone", "dirt", "wood", "water", "sand", "glass", "gold"].map(block => (
                 <div 
                   key={block}
-                  className="flex items-center gap-2 bg-gray-50 p-2 rounded cursor-pointer hover:bg-gray-100"
+                  className="flex items-center gap-2 bg-gray-50 p-3 rounded-md cursor-pointer hover:bg-gray-100 border border-gray-200 transition-all duration-150 shadow-sm"
                   onClick={() => setCode(code => `${code}\nsetBlock(0, 0, 0, '${block}');`)}
                 >
                   <div 
-                    className="w-4 h-4 rounded" 
+                    className="w-6 h-6 rounded" 
                     style={{ 
                       backgroundColor: 
                         block === "grass" ? "#3bca2b" : 
@@ -279,51 +280,53 @@ const Index = () => {
                         block === "water" ? "#1e90ff" : 
                         block === "sand" ? "#ffef8f" : 
                         block === "glass" ? "#ffffff" : 
-                        block === "gold" ? "#FFD700" : "#ff00ff"
+                        block === "gold" ? "#FFD700" : "#ff00ff",
+                      border: "2px solid rgba(0,0,0,0.1)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
                     }}
                   />
-                  <span className="text-sm">{block}</span>
+                  <span className="text-sm font-medium capitalize">{block}</span>
                 </div>
               ))}
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <h2 className="text-lg font-medium mb-2">Example Code</h2>
-            <div className="space-y-2">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5">
+            <h2 className="text-xl font-bold mb-3 text-gray-800">Example Code</h2>
+            <div className="space-y-3">
               <pre 
-                className="bg-gray-50 p-2 rounded text-xs cursor-pointer hover:bg-gray-100 transition-colors"
+                className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono"
                 onClick={() => setCode(HOUSE_EXAMPLE)}
-              >`
+              >
                 // Create a small house
                 fill(0, 0, 0, 6, 0, 6, 'stone');
                 fill(0, 1, 0, 6, 3, 0, 'wood');
                 // ... more code
-              `</pre>
+              </pre>
               
               <pre 
-                className="bg-gray-50 p-2 rounded text-xs cursor-pointer hover:bg-gray-100 transition-colors"
+                className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono"
                 onClick={() => setCode(PYRAMID_EXAMPLE)}
-              >`
+              >
                 // Create a pyramid
                 const size = 10;
-                for (let y = 0; y < size; y++) {
+                for (let y = 0; y &lt; size; y++) {
                   const width = size - y;
                   fill(-width, y, -width, width, y, width, 'sand');
                 }
-              `</pre>
+              </pre>
             </div>
           </div>
         </div>
         
         {/* Right side - 3D view */}
         <div className="w-full lg:w-2/3">
-          <div className="bg-white rounded-lg shadow-sm border p-4 h-full">
-            <h2 className="text-lg font-medium mb-2">3D View</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Click and drag to rotate. Scroll to zoom in/out.
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5 h-full">
+            <h2 className="text-xl font-bold mb-3 text-gray-800">3D View</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Click and drag to rotate. Scroll to zoom in/out. Build your voxel world with code!
             </p>
-            <div className="h-[600px] flex items-center justify-center bg-gray-50 rounded overflow-hidden">
+            <div className="h-[600px] flex items-center justify-center bg-gray-50 rounded-md overflow-hidden border border-gray-200 shadow-inner">
               <canvas 
                 ref={canvasRef} 
                 className="w-full h-full" 
