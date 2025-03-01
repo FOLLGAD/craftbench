@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -271,180 +272,218 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
       // Clear previous blocks
       clearBlocks();
       
-      // Create context with our functions
-      const fill = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, blockType: string) => {
-        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-          for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-            for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
-              setBlock(x, y, z, blockType);
+      // Prepare functions to be called from worker
+      const workerFunctionsSetup = `
+        function setBlock(x, y, z, blockType) {
+          self.postMessage({ 
+            action: 'setBlock', 
+            params: { x, y, z, blockType } 
+          });
+        }
+        
+        function fill(x1, y1, z1, x2, y2, z2, blockType) {
+          for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+            for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+              for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
+                setBlock(x, y, z, blockType);
+              }
             }
           }
         }
-      };
+      `;
       
-      const setBlock = (x: number, y: number, z: number, blockType: string) => {
-        const { scene, blocks, THREE, normalMaps } = sceneRef.current;
-        const key = `${x},${y},${z}`;
+      // Create worker with user code
+      const workerCode = `
+        ${workerFunctionsSetup}
         
-        // Skip if blockType is 'air'
-        if (blockType.toLowerCase() === 'air') {
-          // Remove existing block if there is one
-          if (blocks.has(key)) {
-            scene.remove(blocks.get(key));
-            blocks.delete(key);
+        self.onmessage = function() {
+          try {
+            ${code}
+            self.postMessage({ action: 'complete', success: true });
+          } catch (error) {
+            self.postMessage({ action: 'error', message: error.message });
           }
-          return;
-        }
-        
-        // Remove existing block at this position
-        if (blocks.has(key)) {
-          scene.remove(blocks.get(key));
-        }
-        
-        // Create new block
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        let material;
-        let color;
-        let roughness = 0.7;
-        let metalness = 0.0;
-        let normalScale = new THREE.Vector2(0.5, 0.5);
-        let normalMap = null;
-        
-        // Apply different colors/textures based on block type
-        switch(blockType.toLowerCase()) {
-          case 'grass':
-            color = 0x3bca2b;
-            roughness = 0.9;
-            normalScale.set(0.8, 0.8);
-            break;
-          case 'stone':
-            color = 0x969696;
-            roughness = 0.9;
-            normalScale.set(1.0, 1.0);
-            break;
-          case 'dirt':
-            color = 0x8b4513;
-            roughness = 0.8;
-            normalScale.set(0.7, 0.7);
-            break;
-          case 'wood':
-            color = 0x8b4513;
-            roughness = 0.6;
-            normalScale.set(0.6, 0.6);
-            break;
-          case 'water':
-            color = 0x1e90ff;
-            roughness = 0.1;
-            metalness = 0.2;
-            normalScale.set(0.3, 0.3);
-            break;
-          case 'sand':
-            color = 0xffef8f;
-            roughness = 0.8;
-            normalScale.set(0.5, 0.5);
-            break;
-          case 'glass':
-            color = 0xffffff;
-            roughness = 0.1;
-            metalness = 0.1;
-            normalScale.set(0.2, 0.2);
-            break;
-          case 'gold':
-            color = 0xFFD700;
-            roughness = 0.2;
-            metalness = 0.8;
-            normalScale.set(0.8, 0.8);
-            break;
-          case 'cobblestone':
-            color = 0x555555;
-            roughness = 1.0;
-            normalScale.set(1.2, 1.2);
-            break;
-          case 'brick':
-            color = 0xb22222;
-            roughness = 0.8;
-            normalScale.set(0.9, 0.9);
-            break;
-          case 'leaves':
-            color = 0x2d8c24;
-            roughness = 0.9;
-            normalScale.set(0.6, 0.6);
-            break;
-          case 'bedrock':
-            color = 0x221F26;
-            roughness = 0.9;
-            normalScale.set(1.5, 1.5);
-            break;
-          default:
-            color = 0xff00ff; // Magenta for unknown blocks
-        }
-        
-        // Get the pre-generated normal map
-        normalMap = normalMaps.get(blockType.toLowerCase()) || normalMaps.get('stone');
-        
-        // Create material based on block type
-        if (blockType.toLowerCase() === 'glass' || blockType.toLowerCase() === 'water') {
-          material = new THREE.MeshPhysicalMaterial({ 
-            color: color,
-            transparent: true,
-            opacity: blockType.toLowerCase() === 'glass' ? 0.3 : 0.7,
-            roughness: roughness,
-            metalness: metalness,
-            normalMap: normalMap,
-            normalScale: normalScale,
-            clearcoat: 0.3,
-            clearcoatRoughness: 0.2
-          });
-        } else {
-          material = new THREE.MeshStandardMaterial({ 
-            color: color,
-            roughness: roughness,
-            metalness: metalness,
-            normalMap: normalMap,
-            normalScale: normalScale
-          });
-        }
-        
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(x, y, z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        
-        // Add to scene and store reference
-        scene.add(mesh);
-        blocks.set(key, mesh);
-      };
+        };
+      `;
       
-      // Execute the code with a timeout of 1 second
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("Code execution timed out (max 1 second)"));
-        }, 1000);
-      });
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      const workerUrl = URL.createObjectURL(blob);
+      const worker = new Worker(workerUrl);
       
-      // Execute the code in context with our functions
-      const executionPromise = new Promise<void>((resolve) => {
-        new Function('setBlock', 'fill', code)(setBlock, fill);
-        resolve();
-      });
+      // Set timeout to terminate worker (1 second)
+      const timeoutId = setTimeout(() => {
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        toast.error("Error: Code execution timed out (max 1 second)");
+        console.error("Error: Code execution timed out");
+      }, 1000);
       
-      // Race the execution against the timeout
-      Promise.race([executionPromise, timeoutPromise])
-        .then(() => {
+      // Listen for messages from worker
+      worker.onmessage = (e) => {
+        const data = e.data;
+        
+        if (data.action === 'setBlock') {
+          const { x, y, z, blockType } = data.params;
+          handleSetBlock(x, y, z, blockType);
+        } 
+        else if (data.action === 'complete') {
+          clearTimeout(timeoutId);
+          worker.terminate();
+          URL.revokeObjectURL(workerUrl);
           toast.success("Code executed successfully");
-        })
-        .catch((error) => {
-          console.error("Error executing code:", error);
-          toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          // Clear blocks if timeout occurred to ensure UI responsiveness
-          if (error.message === "Code execution timed out (max 1 second)") {
-            clearBlocks();
-          }
-        });
+        }
+        else if (data.action === 'error') {
+          clearTimeout(timeoutId);
+          worker.terminate();
+          URL.revokeObjectURL(workerUrl);
+          toast.error(`Error: ${data.message}`);
+          console.error("Error in worker:", data.message);
+        }
+      };
+      
+      // Start the worker
+      worker.postMessage('start');
+      
     } catch (error) {
       console.error("Error executing code:", error);
       toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  };
+  
+  // Handler for setBlock commands from worker
+  const handleSetBlock = (x: number, y: number, z: number, blockType: string) => {
+    if (!sceneRef.current) return;
+    
+    const { scene, blocks, THREE, normalMaps } = sceneRef.current;
+    const key = `${x},${y},${z}`;
+    
+    // Skip if blockType is 'air'
+    if (blockType.toLowerCase() === 'air') {
+      // Remove existing block if there is one
+      if (blocks.has(key)) {
+        scene.remove(blocks.get(key));
+        blocks.delete(key);
+      }
+      return;
+    }
+    
+    // Remove existing block at this position
+    if (blocks.has(key)) {
+      scene.remove(blocks.get(key));
+    }
+    
+    // Create new block
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    let material;
+    let color;
+    let roughness = 0.7;
+    let metalness = 0.0;
+    let normalScale = new THREE.Vector2(0.5, 0.5);
+    let normalMap = null;
+    
+    // Apply different colors/textures based on block type
+    switch(blockType.toLowerCase()) {
+      case 'grass':
+        color = 0x3bca2b;
+        roughness = 0.9;
+        normalScale.set(0.8, 0.8);
+        break;
+      case 'stone':
+        color = 0x969696;
+        roughness = 0.9;
+        normalScale.set(1.0, 1.0);
+        break;
+      case 'dirt':
+        color = 0x8b4513;
+        roughness = 0.8;
+        normalScale.set(0.7, 0.7);
+        break;
+      case 'wood':
+        color = 0x8b4513;
+        roughness = 0.6;
+        normalScale.set(0.6, 0.6);
+        break;
+      case 'water':
+        color = 0x1e90ff;
+        roughness = 0.1;
+        metalness = 0.2;
+        normalScale.set(0.3, 0.3);
+        break;
+      case 'sand':
+        color = 0xffef8f;
+        roughness = 0.8;
+        normalScale.set(0.5, 0.5);
+        break;
+      case 'glass':
+        color = 0xffffff;
+        roughness = 0.1;
+        metalness = 0.1;
+        normalScale.set(0.2, 0.2);
+        break;
+      case 'gold':
+        color = 0xFFD700;
+        roughness = 0.2;
+        metalness = 0.8;
+        normalScale.set(0.8, 0.8);
+        break;
+      case 'cobblestone':
+        color = 0x555555;
+        roughness = 1.0;
+        normalScale.set(1.2, 1.2);
+        break;
+      case 'brick':
+        color = 0xb22222;
+        roughness = 0.8;
+        normalScale.set(0.9, 0.9);
+        break;
+      case 'leaves':
+        color = 0x2d8c24;
+        roughness = 0.9;
+        normalScale.set(0.6, 0.6);
+        break;
+      case 'bedrock':
+        color = 0x221F26;
+        roughness = 0.9;
+        normalScale.set(1.5, 1.5);
+        break;
+      default:
+        color = 0xff00ff; // Magenta for unknown blocks
+    }
+    
+    // Get the pre-generated normal map
+    normalMap = normalMaps.get(blockType.toLowerCase()) || normalMaps.get('stone');
+    
+    // Create material based on block type
+    if (blockType.toLowerCase() === 'glass' || blockType.toLowerCase() === 'water') {
+      material = new THREE.MeshPhysicalMaterial({ 
+        color: color,
+        transparent: true,
+        opacity: blockType.toLowerCase() === 'glass' ? 0.3 : 0.7,
+        roughness: roughness,
+        metalness: metalness,
+        normalMap: normalMap,
+        normalScale: normalScale,
+        clearcoat: 0.3,
+        clearcoatRoughness: 0.2
+      });
+    } else {
+      material = new THREE.MeshStandardMaterial({ 
+        color: color,
+        roughness: roughness,
+        metalness: metalness,
+        normalMap: normalMap,
+        normalScale: normalScale
+      });
+    }
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    
+    // Add to scene and store reference
+    scene.add(mesh);
+    blocks.set(key, mesh);
   };
   
   // Clear all blocks from the scene
