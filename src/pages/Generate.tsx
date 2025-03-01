@@ -15,9 +15,9 @@ const Generate = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Initialize PostHog
-    posthog.init('phc_placeholder', { 
-      api_host: 'https://app.posthog.com',
+    // Initialize PostHog with your specific key and host
+    posthog.init('phc_FTO98o8i8IpbVwq7yfTBlC6dnF6s6vG130q9keHhSwe', { 
+      api_host: 'https://us.i.posthog.com',
       loaded: (posthog) => {
         posthog.identify(
           `anonymous-${Math.random().toString(36).substring(2, 9)}`,
