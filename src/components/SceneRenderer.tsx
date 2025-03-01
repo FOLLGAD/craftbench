@@ -287,10 +287,10 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
   
   // Execute user code whenever code changes
   useEffect(() => {
-    if (inited) {
+    if (inited && code) {
       executeCode();
     }
-  }, [inited, sceneRef.current]);
+  }, [inited, sceneRef.current, code]);
   
   const executeCode = () => {
     if (!sceneRef.current) {
