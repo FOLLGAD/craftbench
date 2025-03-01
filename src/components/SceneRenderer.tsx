@@ -287,7 +287,7 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
     if (sceneRef.current) {
       executeCode();
     }
-  }, [code]);
+  }, [code, sceneRef.current]);
   
   const executeCode = () => {
     if (!sceneRef.current) {

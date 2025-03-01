@@ -18,6 +18,7 @@ interface GenerationCardProps {
 }
 
 const GenerationCard = ({ index, generation, isSelected, hasVoted, onVote }: GenerationCardProps) => {
+  console.log(generation.generated_code)
   return (
     <div
       className={`bg-white rounded-lg shadow-lg border p-6 ${
