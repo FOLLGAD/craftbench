@@ -29,7 +29,7 @@ const GenerationCard = ({ index, generation, isSelected, hasVoted, onVote }: Gen
         <h3 className="text-xl font-bold">Model {index + 1}</h3>
       </div>
 
-      <div className="h-64 bg-gray-800 rounded-md mb-6">
+      <div className="bg-gray-800 rounded-md mb-6">
         <SceneRenderer code={generation.generated_code} />
       </div>
 
