@@ -105,7 +105,7 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
               
               // Add embossed effect for better normal map appearance
               const imageData = ctx.getImageData(0, 0, 256, 256);
-              const data = imageData.data;
+              const imageDataArray = imageData.data;
               
               // Create embossed effect by manipulating neighboring pixels
               const tempCanvas = document.createElement('canvas');
@@ -194,13 +194,13 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
             default:
               // Add randomized noise for normal map
               const pixels = ctx.getImageData(0, 0, 256, 256);
-              const data = pixels.data;
+              const pixelData = pixels.data;
               
-              for (let i = 0; i < data.length; i += 4) {
+              for (let i = 0; i < pixelData.length; i += 4) {
                 const noise = Math.random() * intensity * 100;
-                data[i] = Math.min(255, data[i] + noise);     // r
-                data[i+1] = Math.min(255, data[i+1] + noise); // g
-                data[i+2] = Math.min(255, data[i+2] + noise); // b
+                pixelData[i] = Math.min(255, pixelData[i] + noise);     // r
+                pixelData[i+1] = Math.min(255, pixelData[i+1] + noise); // g
+                pixelData[i+2] = Math.min(255, pixelData[i+2] + noise); // b
               }
               
               ctx.putImageData(pixels, 0, 0);
