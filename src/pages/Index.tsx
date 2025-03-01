@@ -7,18 +7,10 @@ import SceneRenderer from "@/components/SceneRenderer";
 
 const Index = () => {
   const [code, setCode] = useState(DEFAULT_CODE_PROMPT);
-  const [isRunning, setIsRunning] = useState(false);
-  
-  // Execute user code
-  const executeCode = () => {
-    setIsRunning(true);
-  };
   
   // Clear all blocks from the scene
   const clearBlocks = () => {
-    // This will be triggered in SceneRenderer
     setCode("");
-    setIsRunning(true);
   };
   
   return (
@@ -47,11 +39,10 @@ const Index = () => {
           
           <div className="flex gap-3">
             <Button 
-              onClick={executeCode} 
-              disabled={isRunning}
+              onClick={() => setCode(code)}  
               className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-all duration-200 shadow-md"
             >
-              {isRunning ? "Running..." : "Run Code"}
+              Run Code
             </Button>
             
             <Button 
@@ -143,11 +134,7 @@ const Index = () => {
             <p className="text-sm text-gray-600 mb-4">
               Click and drag to rotate. Scroll to zoom in/out. Build your voxel world with code!
             </p>
-            <SceneRenderer 
-              code={code}
-              isRunning={isRunning}
-              setIsRunning={setIsRunning}
-            />
+            <SceneRenderer code={code} />
           </div>
         </div>
       </div>

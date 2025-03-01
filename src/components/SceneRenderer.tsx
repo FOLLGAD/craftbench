@@ -3,8 +3,6 @@ import { toast } from "sonner";
 
 interface SceneRendererProps {
   code: string;
-  isRunning: boolean;
-  setIsRunning: (isRunning: boolean) => void;
 }
 
 interface SceneRef {
@@ -17,7 +15,7 @@ interface SceneRef {
   normalMaps: Map<string, any>;
 }
 
-const SceneRenderer = ({ code, isRunning, setIsRunning }: SceneRendererProps) => {
+const SceneRenderer = ({ code }: SceneRendererProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<SceneRef | null>(null);
   
@@ -256,17 +254,16 @@ const SceneRenderer = ({ code, isRunning, setIsRunning }: SceneRendererProps) =>
     });
   }, []);
   
-  // Execute user code
+  // Execute user code whenever code changes
   useEffect(() => {
-    if (isRunning && sceneRef.current) {
+    if (sceneRef.current) {
       executeCode();
     }
-  }, [isRunning, code]);
+  }, [code]);
   
   const executeCode = () => {
     if (!sceneRef.current) {
       toast.error("3D renderer not initialized yet");
-      setIsRunning(false);
       return;
     }
     
@@ -425,8 +422,6 @@ const SceneRenderer = ({ code, isRunning, setIsRunning }: SceneRendererProps) =>
     } catch (error) {
       console.error("Error executing code:", error);
       toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsRunning(false);
     }
   };
   
