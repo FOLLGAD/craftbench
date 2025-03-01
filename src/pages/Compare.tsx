@@ -15,17 +15,9 @@ interface Generation {
   generated_code: string;
 }
 
-const MODEL_OPTIONS = [
-  { id: "openai/gpt-4", name: "GPT-4" },
-  { id: "anthropic/claude-3-opus", name: "Claude-3 Opus" },
-  { id: "google/gemini-1.5-pro", name: "Gemini Pro" },
-  { id: "mistralai/mistral-large", name: "Mistral Large" }
-];
-
 const Compare = () => {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
-  const [apiKey, setApiKey] = useState(localStorage.getItem("openrouter_api_key") || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [selectedGeneration, setSelectedGeneration] = useState<number | null>(null);
@@ -33,27 +25,9 @@ const Compare = () => {
   const [shuffledOrder, setShuffledOrder] = useState<number[]>([0, 1]);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (apiKey) {
-      localStorage.setItem("openrouter_api_key", apiKey);
-    }
-  }, [apiKey]);
-
-  // Randomly shuffle the order of generations for blind comparison
-  useEffect(() => {
-    if (generations.length === 2) {
-      setShuffledOrder(Math.random() > 0.5 ? [0, 1] : [1, 0]);
-    }
-  }, [generations]);
-
   const generateCode = async () => {
     if (!prompt) {
       toast.error("Please enter a prompt");
-      return;
-    }
-
-    if (!apiKey) {
-      toast.error("Please enter your OpenRouter API key");
       return;
     }
 
@@ -62,56 +36,24 @@ const Compare = () => {
     setSelectedGeneration(null);
     setHasVoted(false);
 
-    // Randomly select two different models
-    const shuffledModels = [...MODEL_OPTIONS].sort(() => Math.random() - 0.5).slice(0, 2);
-
     try {
-      const results = await Promise.all(
-        shuffledModels.map(async (model) => {
-          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model: model.id,
-              messages: [
-                { role: "system", content: "You are a JavaScript expert that writes clean, working code for voxel scenes. You only provide pure JavaScript code without explanations. Your code should use setBlock(x, y, z, 'material') and fill(x1, y1, z1, x2, y2, z2, 'material') to create voxel scenes." },
-                { role: "user", content: prompt }
-              ],
-            }),
-          });
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/compare-models`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ prompt }),
+      });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || "Failed to generate code");
-          }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate code");
+      }
 
-          const data = await response.json();
-          const generatedCode = data.choices[0]?.message?.content || "// No code generated";
-
-          // Store generation in database
-          const { data: insertedGeneration, error } = await supabase
-            .from("mc-generations")
-            .insert([
-              {
-                prompt,
-                model_name: model.id,
-                generated_code: generatedCode,
-              }
-            ])
-            .select();
-
-          if (error) {
-            throw new Error(`Database error: ${error.message}`);
-          }
-
-          return insertedGeneration[0];
-        })
-      );
-
-      setGenerations(results);
+      const data = await response.json();
+      setGenerations(data.generations);
+      setShuffledOrder(data.shuffledOrder);
       toast.success("Generated code from two models!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "An error occurred");
@@ -171,33 +113,9 @@ const Compare = () => {
       </header>
 
       <div className="container mx-auto p-6 flex flex-col gap-6">
-        {/* API Key and Prompt Section */}
+        {/* Prompt Section */}
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
           <h2 className="text-2xl font-bold mb-6 text-gray-800">Model Comparison</h2>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              OpenRouter API Key
-            </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="Enter your OpenRouter API key"
-            />
-            <p className="mt-2 text-sm text-gray-500">
-              Get your key at{" "}
-              <a
-                href="https://openrouter.ai/keys"
-                target="_blank"
-                rel="noreferrer"
-                className="text-purple-600 hover:underline"
-              >
-                openrouter.ai/keys
-              </a>
-            </p>
-          </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -213,7 +131,7 @@ const Compare = () => {
 
           <Button
             onClick={generateCode}
-            disabled={isGenerating || !apiKey || !prompt}
+            disabled={isGenerating || !prompt}
             className="w-full py-6 text-lg bg-purple-600 hover:bg-purple-700"
           >
             {isGenerating ? (

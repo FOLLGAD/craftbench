@@ -105,6 +105,45 @@ export type Database = {
           },
         ]
       }
+      "mc-comparisons": {
+        Row: {
+          created_at: string | null
+          generation_a_id: string
+          generation_b_id: string
+          id: string
+          prompt: string
+        }
+        Insert: {
+          created_at?: string | null
+          generation_a_id: string
+          generation_b_id: string
+          id?: string
+          prompt: string
+        }
+        Update: {
+          created_at?: string | null
+          generation_a_id?: string
+          generation_b_id?: string
+          id?: string
+          prompt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mc-comparisons_generation_a_id_fkey"
+            columns: ["generation_a_id"]
+            isOneToOne: false
+            referencedRelation: "mc-generations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mc-comparisons_generation_b_id_fkey"
+            columns: ["generation_b_id"]
+            isOneToOne: false
+            referencedRelation: "mc-generations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       "mc-generations": {
         Row: {
           created_at: string | null
