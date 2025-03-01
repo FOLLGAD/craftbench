@@ -5,12 +5,20 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || "";
 
-// List of models to choose from
+// List of models to choose from, exactly as specified
 const MODEL_OPTIONS = [
-  { id: "openai/gpt-4o", name: "GPT-4o" },
-  { id: "anthropic/claude-3-5-sonnet", name: "Claude 3.5 Sonnet" },
-  { id: "google/gemini-1.5-pro", name: "Gemini Pro" },
-  { id: "mistralai/mistral-large", name: "Mistral Large" }
+  "anthropic/claude-3.5-sonnet",
+  "anthropic/claude-3.7-sonnet:thinking",
+  "anthropic/claude-3.7-sonnet",
+  "openai/o3-mini",
+  "openai/o3-mini-high",
+  "openai/gpt-4o-2024-11-20",
+  "google/gemini-2.0-pro-exp-02-05:free",
+  "openai/gpt-4.5-preview",
+  "google/gemini-2.0-flash-lite-001",
+  "google/gemini-2.0-flash-001",
+  "deepseek/deepseek-r1",
+  "deepseek/deepseek-chat"
 ];
 
 serve(async (req) => {
@@ -54,12 +62,17 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Randomly select two different models
-    const shuffledModels = [...MODEL_OPTIONS].sort(() => Math.random() - 0.5).slice(0, 2);
-    console.log(`Using models: ${shuffledModels[0].id} and ${shuffledModels[1].id}`);
+    const modelIndexes = new Set();
+    while (modelIndexes.size < 2) {
+      modelIndexes.add(Math.floor(Math.random() * MODEL_OPTIONS.length));
+    }
+    
+    const modelChoices = Array.from(modelIndexes).map(index => MODEL_OPTIONS[index]);
+    console.log(`Using models: ${modelChoices[0]} and ${modelChoices[1]}`);
 
     // Generate code with both models
     const generations = await Promise.all(
-      shuffledModels.map(async (model) => {
+      modelChoices.map(async (modelId) => {
         try {
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -69,7 +82,7 @@ serve(async (req) => {
               "HTTP-Referer": "https://lovable.dev/"
             },
             body: JSON.stringify({
-              model: model.id,
+              model: modelId,
               messages: [
                 { 
                   role: "system", 
@@ -82,14 +95,14 @@ serve(async (req) => {
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error(`Error from OpenRouter (${model.id}):`, errorText);
+            console.error(`Error from OpenRouter (${modelId}):`, errorText);
             let errorData;
             try {
               errorData = JSON.parse(errorText);
             } catch (e) {
               errorData = { error: { message: "API returned an error" } };
             }
-            throw new Error(errorData.error?.message || `Failed to generate code with ${model.id}`);
+            throw new Error(errorData.error?.message || `Failed to generate code with ${modelId}`);
           }
 
           const data = await response.json();
@@ -101,7 +114,7 @@ serve(async (req) => {
             .insert([
               {
                 prompt,
-                model_name: model.id,
+                model_name: modelId,
                 generated_code: generatedCode,
               }
             ])
@@ -118,13 +131,13 @@ serve(async (req) => {
 
           return insertedGeneration[0];
         } catch (error) {
-          console.error(`Error generating with ${model.id}:`, error);
+          console.error(`Error generating with ${modelId}:`, error);
           // Return a fallback generation instead of failing the whole request
           return {
             id: crypto.randomUUID(),
             prompt,
-            model_name: model.id,
-            generated_code: `// Error generating code with ${model.id}: ${error.message}\n// Fallback code\nfill(0, 0, 0, 10, 1, 10, 'stone');\nsetBlock(5, 2, 5, 'gold');`,
+            model_name: modelId,
+            generated_code: `// Error generating code with ${modelId}: ${error.message}\n// Fallback code\nfill(0, 0, 0, 10, 1, 10, 'stone');\nsetBlock(5, 2, 5, 'gold');`,
             created_at: new Date().toISOString()
           };
         }
