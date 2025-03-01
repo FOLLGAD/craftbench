@@ -26,6 +26,10 @@ const ResultsSection = ({
   onVote,
   onReset,
 }: ResultsSectionProps) => {
+  if (generations.length !== 2) {
+    return null;
+  }
+
   return (
     <>
       <div className="flex justify-between items-center mb-2">
