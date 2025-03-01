@@ -18,6 +18,7 @@ interface SceneRef {
 const SceneRenderer = ({ code }: SceneRendererProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<SceneRef | null>(null);
+  const [inited, setInited] = useState(false);
   
   // Initialize Three.js scene
   useEffect(() => {
@@ -266,6 +267,8 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
         };
         
         window.addEventListener('resize', handleResize);
+
+        setInited(true);
         
         // Cleanup
         return () => {
@@ -280,14 +283,14 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
         };
       });
     });
-  }, []);
+  }, [canvasRef.current]);
   
   // Execute user code whenever code changes
   useEffect(() => {
-    if (sceneRef.current) {
+    if (inited) {
       executeCode();
     }
-  }, [code, sceneRef.current]);
+  }, [inited, sceneRef.current]);
   
   const executeCode = () => {
     if (!sceneRef.current) {
