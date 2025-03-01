@@ -50,6 +50,7 @@ const Compare = () => {
         throw new Error("Invalid response from server");
       }
 
+      console.log("Received generations:", data.generations);
       setGenerations(data.generations);
       setShuffledOrder(data.shuffledOrder || [0, 1]);
       toast.success("Generated code from two models!");
@@ -70,6 +71,7 @@ const Compare = () => {
     const generationId = generations[actualIndex].id;
     
     try {
+      console.log("Voting for generation:", generationId);
       const { error } = await supabase
         .from("mc-votes")
         .insert([
@@ -87,6 +89,7 @@ const Compare = () => {
       setHasVoted(true);
       toast.success("Thanks for your vote!");
     } catch (error) {
+      console.error("Vote error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to record vote");
     }
   };
@@ -123,7 +126,7 @@ const Compare = () => {
         {error && !isGenerating && <ErrorState error={error} onReset={resetError} />}
 
         {/* Results Section */}
-        {generations.length === 2 && !isGenerating && !error && (
+        {generations.length > 0 && !isGenerating && !error && (
           <ResultsSection 
             generations={generations}
             shuffledOrder={shuffledOrder}
