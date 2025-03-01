@@ -415,10 +415,32 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
         blocks.set(key, mesh);
       };
       
-      // Execute the code in context with our functions
-      new Function('setBlock', 'fill', code)(setBlock, fill);
+      // Execute the code with a timeout of 1 second
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Code execution timed out (max 1 second)"));
+        }, 1000);
+      });
       
-      toast.success("Code executed successfully");
+      // Execute the code in context with our functions
+      const executionPromise = new Promise<void>((resolve) => {
+        new Function('setBlock', 'fill', code)(setBlock, fill);
+        resolve();
+      });
+      
+      // Race the execution against the timeout
+      Promise.race([executionPromise, timeoutPromise])
+        .then(() => {
+          toast.success("Code executed successfully");
+        })
+        .catch((error) => {
+          console.error("Error executing code:", error);
+          toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          // Clear blocks if timeout occurred to ensure UI responsiveness
+          if (error.message === "Code execution timed out (max 1 second)") {
+            clearBlocks();
+          }
+        });
     } catch (error) {
       console.error("Error executing code:", error);
       toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
