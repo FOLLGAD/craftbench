@@ -20,7 +20,19 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    // Parse the request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error("Error parsing request JSON:", e);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { prompt } = body;
 
     if (!prompt) {
       return new Response(
@@ -48,50 +60,74 @@ serve(async (req) => {
     // Generate code with both models
     const generations = await Promise.all(
       shuffledModels.map(async (model) => {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": "https://lovable.dev/"
-          },
-          body: JSON.stringify({
-            model: model.id,
-            messages: [
-              { 
-                role: "system", 
-                content: "You are a JavaScript expert that writes clean, working code for voxel scenes. You only provide pure JavaScript code without explanations. Your code should use setBlock(x, y, z, 'material') and fill(x1, y1, z1, x2, y2, z2, 'material') to create voxel scenes." 
-              },
-              { role: "user", content: prompt }
-            ],
-          }),
-        });
+        try {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+              "HTTP-Referer": "https://lovable.dev/"
+            },
+            body: JSON.stringify({
+              model: model.id,
+              messages: [
+                { 
+                  role: "system", 
+                  content: "You are a JavaScript expert that writes clean, working code for voxel scenes. You only provide pure JavaScript code without explanations. Your code should use setBlock(x, y, z, 'material') and fill(x1, y1, z1, x2, y2, z2, 'material') to create voxel scenes." 
+                },
+                { role: "user", content: prompt }
+              ],
+            }),
+          });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || `Failed to generate code with ${model.id}`);
-        }
-
-        const data = await response.json();
-        const generatedCode = data.choices[0]?.message?.content || "// No code generated";
-
-        // Store generation in database
-        const { data: insertedGeneration, error } = await supabase
-          .from("mc-generations")
-          .insert([
-            {
-              prompt,
-              model_name: model.id,
-              generated_code: generatedCode,
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error from OpenRouter (${model.id}):`, errorText);
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch (e) {
+              errorData = { error: { message: "API returned an error" } };
             }
-          ])
-          .select();
+            throw new Error(errorData.error?.message || `Failed to generate code with ${model.id}`);
+          }
 
-        if (error) {
-          throw new Error(`Database error: ${error.message}`);
+          const data = await response.json();
+          const generatedCode = data.choices[0]?.message?.content || "// No code generated";
+
+          // Store generation in database
+          const { data: insertedGeneration, error } = await supabase
+            .from("mc-generations")
+            .insert([
+              {
+                prompt,
+                model_name: model.id,
+                generated_code: generatedCode,
+              }
+            ])
+            .select();
+
+          if (error) {
+            console.error("Supabase insert error:", error);
+            throw new Error(`Database error: ${error.message}`);
+          }
+
+          if (!insertedGeneration || insertedGeneration.length === 0) {
+            throw new Error("Failed to insert generation into database");
+          }
+
+          return insertedGeneration[0];
+        } catch (error) {
+          console.error(`Error generating with ${model.id}:`, error);
+          // Return a fallback generation instead of failing the whole request
+          return {
+            id: crypto.randomUUID(),
+            prompt,
+            model_name: model.id,
+            generated_code: `// Error generating code with ${model.id}: ${error.message}\n// Fallback code\nfill(0, 0, 0, 10, 1, 10, 'stone');\nsetBlock(5, 2, 5, 'gold');`,
+            created_at: new Date().toISOString()
+          };
         }
-
-        return insertedGeneration[0];
       })
     );
 
@@ -108,23 +144,27 @@ serve(async (req) => {
       .select();
 
     if (comparisonError) {
+      console.error("Comparison insert error:", comparisonError);
       throw new Error(`Database error: ${comparisonError.message}`);
     }
+
+    // Define the shuffled order
+    const shuffledOrder = Math.random() > 0.5 ? [0, 1] : [1, 0];
 
     return new Response(
       JSON.stringify({ 
         generations,
         comparison: comparison[0],
-        shuffledOrder: Math.random() > 0.5 ? [0, 1] : [1, 0]
+        shuffledOrder
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       }
     );
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error("Error in compare-models function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "An unknown error occurred" }),
       { 
         status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" }

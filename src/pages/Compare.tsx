@@ -24,6 +24,7 @@ const Compare = () => {
   const [hasVoted, setHasVoted] = useState(false);
   const [shuffledOrder, setShuffledOrder] = useState<number[]>([0, 1]);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const generateCode = async () => {
     if (!prompt) {
@@ -35,28 +36,30 @@ const Compare = () => {
     setGenerations([]);
     setSelectedGeneration(null);
     setHasVoted(false);
+    setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/compare-models`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ prompt }),
+      // Use supabase's functions.invoke instead of fetch for better error handling
+      const { data, error: functionError } = await supabase.functions.invoke('compare-models', {
+        body: { prompt }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate code");
+      if (functionError) {
+        throw new Error(functionError.message || "Failed to generate code");
       }
 
-      const data = await response.json();
+      if (!data || !data.generations || data.generations.length !== 2) {
+        throw new Error("Invalid response from server");
+      }
+
       setGenerations(data.generations);
-      setShuffledOrder(data.shuffledOrder);
+      setShuffledOrder(data.shuffledOrder || [0, 1]);
       toast.success("Generated code from two models!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "An error occurred");
+      console.error("Generation error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -142,6 +145,13 @@ const Compare = () => {
               "Generate with Two Models"
             )}
           </Button>
+          
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-600">
+              <p className="font-medium">Error:</p>
+              <p>{error}</p>
+            </div>
+          )}
         </div>
 
         {/* Results Section */}
@@ -206,7 +216,7 @@ const Compare = () => {
         )}
 
         {/* Empty State */}
-        {!generations.length && !isGenerating && (
+        {!generations.length && !isGenerating && !error && (
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-12 text-center">
             <h3 className="text-xl font-medium text-gray-700 mb-4">Ready for some AI magic?</h3>
             <p className="text-gray-500">
