@@ -21,6 +21,14 @@ const MODEL_OPTIONS = [
   "deepseek/deepseek-chat"
 ];
 
+// Available materials for the minecraft voxel scenes
+const AVAILABLE_MATERIALS = [
+  "stone", "dirt", "grass", "wood", "leaves", "glass", 
+  "water", "lava", "sand", "gravel", "gold", "iron", 
+  "diamond", "emerald", "bedrock", "obsidian", "brick", 
+  "cobblestone", "snow", "ice", "clay", "wool", "air"
+];
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -91,6 +99,14 @@ serve(async (req) => {
       }
     };
 
+    // Create the minecraft-specific system prompt
+    const systemPrompt = `You write minecraft voxel scenes. You only provide pure Javascript code without code fences or explanations. The functions setBlock(x, y, z, "material") and fill(x1, y1, z1, x2, y2, z2, "material") are used to place blocks in the world.
+
+Your materials are:
+${AVAILABLE_MATERIALS.join(", ")}
+
+You can be creative`;
+
     // Generate code with both models with timeout
     const generateCode = async (modelId) => {
       try {
@@ -109,7 +125,7 @@ serve(async (req) => {
               messages: [
                 { 
                   role: "system", 
-                  content: "You are a JavaScript expert that writes clean, working code for voxel scenes. You only provide pure JavaScript code without explanations. Your code should use setBlock(x, y, z, 'material') and fill(x1, y1, z1, x2, y2, z2, 'material') to create voxel scenes." 
+                  content: systemPrompt
                 },
                 { role: "user", content: prompt }
               ],
