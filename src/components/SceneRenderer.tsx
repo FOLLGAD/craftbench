@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -87,10 +86,10 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
           // Add pattern based on type
           switch(pattern) {
             case 'grid':
-              // Create grid pattern
+              // Create grid pattern with higher contrast for normal maps
               const gridSize = 32;
-              ctx.strokeStyle = `rgba(0, 0, 0, ${intensity * 0.5})`;
-              ctx.lineWidth = 1;
+              ctx.strokeStyle = `rgba(255, 255, 255, ${intensity * 0.9})`;
+              ctx.lineWidth = 3;
               
               for (let i = 0; i <= 256; i += gridSize) {
                 ctx.beginPath();
@@ -102,6 +101,34 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
                 ctx.moveTo(0, i);
                 ctx.lineTo(256, i);
                 ctx.stroke();
+              }
+              
+              // Add embossed effect for better normal map appearance
+              const imageData = ctx.getImageData(0, 0, 256, 256);
+              const data = imageData.data;
+              
+              // Create embossed effect by manipulating neighboring pixels
+              const tempCanvas = document.createElement('canvas');
+              tempCanvas.width = 256;
+              tempCanvas.height = 256;
+              const tempCtx = tempCanvas.getContext('2d');
+              if (tempCtx) {
+                tempCtx.putImageData(imageData, 0, 0);
+                
+                // Apply emboss-like filter
+                ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+                ctx.fillRect(0, 0, 256, 256);
+                
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 2;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                ctx.drawImage(tempCanvas, 0, 0);
+                
+                ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+                ctx.shadowOffsetX = -2;
+                ctx.shadowOffsetY = -2;
+                ctx.drawImage(tempCanvas, 0, 0);
               }
               break;
               
