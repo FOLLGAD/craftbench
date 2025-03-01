@@ -4,6 +4,22 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || "";
 
+// List of models to choose from
+const MODELS = [
+  "anthropic/claude-3.5-sonnet",
+  "anthropic/claude-3.7-sonnet:thinking",
+  "anthropic/claude-3.7-sonnet",
+  "openai/o3-mini",
+  "openai/o3-mini-high",
+  "openai/gpt-4o-2024-11-20",
+  "google/gemini-2.0-pro-exp-02-05:free",
+  "openai/gpt-4.5-preview",
+  "google/gemini-2.0-flash-lite-001",
+  "google/gemini-2.0-flash-001",
+  "deepseek/deepseek-r1",
+  "deepseek/deepseek-chat"
+];
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -33,6 +49,10 @@ serve(async (req) => {
       );
     }
 
+    // Select a random model from the list
+    const randomModel = MODELS[Math.floor(Math.random() * MODELS.length)];
+    console.log(`Using model: ${randomModel}`);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -42,7 +62,7 @@ serve(async (req) => {
         "X-Title": "Voxel Sculptor"
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-opus:beta",
+        model: randomModel,
         messages: [
           {
             role: "system",
@@ -75,7 +95,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ code: generatedText }),
+      JSON.stringify({ code: generatedText, model: randomModel }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       }

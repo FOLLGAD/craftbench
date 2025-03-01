@@ -12,6 +12,7 @@ const Generate = () => {
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [usedModel, setUsedModel] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,8 +50,12 @@ const Generate = () => {
       }
 
       setGeneratedCode(data.code || "");
-      toast.success("Code generated successfully");
-      posthog.capture("generate_success", { prompt_length: prompt.length });
+      setUsedModel(data.model || "unknown model");
+      toast.success(`Code generated successfully using ${data.model}`);
+      posthog.capture("generate_success", { 
+        prompt_length: prompt.length,
+        model: data.model 
+      });
     } catch (error) {
       console.error("Error generating code:", error);
       toast.error(`Error: ${error instanceof Error ? error.message : "Failed to generate code"}`);
@@ -98,6 +103,12 @@ const Generate = () => {
             >
               {isGenerating ? "Generating..." : "Generate Code"}
             </Button>
+            
+            {usedModel && (
+              <div className="text-xs text-gray-500 mt-2">
+                Generated using {usedModel}
+              </div>
+            )}
           </div>
           
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5 overflow-hidden">
