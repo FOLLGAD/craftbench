@@ -62,11 +62,11 @@ const Index = () => {
         const gridHelper = new THREE.GridHelper(20, 20);
         scene.add(gridHelper);
         
-        // Create texture loader
-        const textureLoader = new THREE.TextureLoader();
+        // Pre-generated normal maps for each block type
+        const normalMaps = new Map();
         
-        // Generate normal maps for basic textures
-        const generateNormalMap = (color: number) => {
+        // Function to generate normal maps with different characteristics
+        const generateNormalMap = (color: number, pattern: 'noise' | 'grid' | 'smooth' | 'rough' | 'bumpy' = 'noise', intensity: number = 0.5) => {
           const canvas = document.createElement('canvas');
           canvas.width = 256;
           canvas.height = 256;
@@ -77,21 +77,131 @@ const Index = () => {
           ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
           ctx.fillRect(0, 0, 256, 256);
           
-          // Add some noise for normal map
-          for (let i = 0; i < 5000; i++) {
-            const x = Math.random() * 256;
-            const y = Math.random() * 256;
-            const radius = 1 + Math.random() * 2;
-            const brightness = Math.random() * 40;
-            
-            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness + 128}, 0.5)`;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
+          // Add pattern based on type
+          switch(pattern) {
+            case 'grid':
+              // Create grid pattern
+              const gridSize = 32;
+              ctx.strokeStyle = `rgba(0, 0, 0, ${intensity * 0.5})`;
+              ctx.lineWidth = 1;
+              
+              for (let i = 0; i <= 256; i += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 256);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(256, i);
+                ctx.stroke();
+              }
+              break;
+              
+            case 'rough':
+              // Create rough texture with jagged lines
+              ctx.strokeStyle = `rgba(0, 0, 0, ${intensity * 0.7})`;
+              ctx.lineWidth = 2;
+              
+              for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                let x = 0;
+                let y = Math.random() * 256;
+                ctx.moveTo(x, y);
+                
+                while (x < 256) {
+                  x += Math.random() * 20;
+                  y += (Math.random() - 0.5) * 40;
+                  ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+              }
+              break;
+              
+            case 'bumpy':
+              // Create bumpy texture with circles
+              for (let i = 0; i < 100; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const radius = 5 + Math.random() * 15;
+                const brightness = 50 + Math.random() * 150;
+                
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, ${intensity})`);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              break;
+              
+            case 'smooth':
+              // Create smooth gradients
+              for (let i = 0; i < 10; i++) {
+                const x1 = Math.random() * 256;
+                const y1 = Math.random() * 256;
+                const x2 = Math.random() * 256;
+                const y2 = Math.random() * 256;
+                const r = 50 + Math.random() * 206;
+                
+                const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+                gradient.addColorStop(0, `rgba(${r}, ${r}, ${r}, 0)`);
+                gradient.addColorStop(0.5, `rgba(${r}, ${r}, ${r}, ${intensity * 0.5})`);
+                gradient.addColorStop(1, `rgba(${r}, ${r}, ${r}, 0)`);
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 256, 256);
+              }
+              break;
+              
+            case 'noise':
+            default:
+              // Add randomized noise for normal map
+              const pixels = ctx.getImageData(0, 0, 256, 256);
+              const data = pixels.data;
+              
+              for (let i = 0; i < data.length; i += 4) {
+                const noise = Math.random() * intensity * 100;
+                data[i] = Math.min(255, data[i] + noise);     // r
+                data[i+1] = Math.min(255, data[i+1] + noise); // g
+                data[i+2] = Math.min(255, data[i+2] + noise); // b
+              }
+              
+              ctx.putImageData(pixels, 0, 0);
+              
+              // Add some additional dots for texture
+              for (let i = 0; i < 5000; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const radius = 1 + Math.random() * 2;
+                const brightness = Math.random() * 40;
+                
+                ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness + 128}, ${intensity * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              break;
           }
           
           return new THREE.CanvasTexture(canvas);
         };
+        
+        // Pre-generate normal maps for each block type
+        normalMaps.set('grass', generateNormalMap(0x3bca2b, 'bumpy', 0.7));
+        normalMaps.set('stone', generateNormalMap(0x969696, 'rough', 0.9));
+        normalMaps.set('dirt', generateNormalMap(0x8b4513, 'noise', 0.8));
+        normalMaps.set('wood', generateNormalMap(0x8b4513, 'grid', 0.6));
+        normalMaps.set('water', generateNormalMap(0x1e90ff, 'smooth', 0.3));
+        normalMaps.set('sand', generateNormalMap(0xffef8f, 'noise', 0.5));
+        normalMaps.set('glass', generateNormalMap(0xffffff, 'smooth', 0.2));
+        normalMaps.set('gold', generateNormalMap(0xFFD700, 'bumpy', 0.8));
+        normalMaps.set('cobblestone', generateNormalMap(0x555555, 'rough', 1.0));
+        normalMaps.set('brick', generateNormalMap(0xb22222, 'grid', 0.8));
+        normalMaps.set('leaves', generateNormalMap(0x2d8c24, 'bumpy', 0.6));
+        normalMaps.set('bedrock', generateNormalMap(0x221F26, 'rough', 1.0));
         
         // Store scene reference
         sceneRef.current = { 
@@ -101,8 +211,7 @@ const Index = () => {
           controls, 
           blocks: new Map(), 
           THREE,
-          textureLoader,
-          generateNormalMap
+          normalMaps
         };
         
         // Animation loop
@@ -164,7 +273,7 @@ const Index = () => {
       };
       
       const setBlock = (x: number, y: number, z: number, blockType: string) => {
-        const { scene, blocks, THREE, generateNormalMap } = sceneRef.current;
+        const { scene, blocks, THREE, normalMaps } = sceneRef.current;
         const key = `${x},${y},${z}`;
         
         // Skip if blockType is 'air'
@@ -188,65 +297,80 @@ const Index = () => {
         let color;
         let roughness = 0.7;
         let metalness = 0.0;
+        let normalScale = new THREE.Vector2(0.5, 0.5);
+        let normalMap = null;
         
         // Apply different colors/textures based on block type
         switch(blockType.toLowerCase()) {
           case 'grass':
             color = 0x3bca2b;
+            roughness = 0.9;
+            normalScale.set(0.8, 0.8);
             break;
           case 'stone':
             color = 0x969696;
             roughness = 0.9;
+            normalScale.set(1.0, 1.0);
             break;
           case 'dirt':
             color = 0x8b4513;
             roughness = 0.8;
+            normalScale.set(0.7, 0.7);
             break;
           case 'wood':
             color = 0x8b4513;
             roughness = 0.6;
+            normalScale.set(0.6, 0.6);
             break;
           case 'water':
             color = 0x1e90ff;
             roughness = 0.1;
             metalness = 0.2;
+            normalScale.set(0.3, 0.3);
             break;
           case 'sand':
             color = 0xffef8f;
             roughness = 0.8;
+            normalScale.set(0.5, 0.5);
             break;
           case 'glass':
             color = 0xffffff;
             roughness = 0.1;
             metalness = 0.1;
+            normalScale.set(0.2, 0.2);
             break;
           case 'gold':
             color = 0xFFD700;
             roughness = 0.2;
             metalness = 0.8;
+            normalScale.set(0.8, 0.8);
             break;
           case 'cobblestone':
             color = 0x555555;
             roughness = 1.0;
+            normalScale.set(1.2, 1.2);
             break;
           case 'brick':
             color = 0xb22222;
             roughness = 0.8;
+            normalScale.set(0.9, 0.9);
             break;
           case 'leaves':
             color = 0x2d8c24;
             roughness = 0.9;
+            normalScale.set(0.6, 0.6);
             break;
           case 'bedrock':
             color = 0x221F26;
             roughness = 0.9;
+            normalScale.set(1.5, 1.5);
             break;
           default:
             color = 0xff00ff; // Magenta for unknown blocks
         }
         
-        // Generate normal map
-        const normalMap = generateNormalMap(color);
+        // Get the pre-generated normal map
+        normalMap = normalMaps.get(blockType.toLowerCase()) || normalMaps.get('stone');
         
         // Create material based on block type
         if (blockType.toLowerCase() === 'glass' || blockType.toLowerCase() === 'water') {
@@ -257,7 +381,7 @@ const Index = () => {
             roughness: roughness,
             metalness: metalness,
             normalMap: normalMap,
-            normalScale: new THREE.Vector2(0.1, 0.1),
+            normalScale: normalScale,
             clearcoat: 0.3,
             clearcoatRoughness: 0.2
           });
@@ -267,7 +391,7 @@ const Index = () => {
             roughness: roughness,
             metalness: metalness,
             normalMap: normalMap,
-            normalScale: new THREE.Vector2(0.1, 0.1)
+            normalScale: normalScale
           });
         }
         
