@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -69,9 +68,7 @@ const SceneRenderer = ({ code, isRunning, setIsRunning }: SceneRendererProps) =>
         directionalLight.shadow.mapSize.height = 1024;
         scene.add(directionalLight);
         
-        // Grid helper
-        const gridHelper = new THREE.GridHelper(20, 20);
-        scene.add(gridHelper);
+        // Grid helper removed from here
         
         // Pre-generated normal maps for each block type
         const normalMaps = new Map();
