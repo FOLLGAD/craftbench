@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { DEFAULT_CODE_PROMPT, HOUSE_EXAMPLE, PYRAMID_EXAMPLE } from "@/constants/codeExamples";
+import { DEFAULT_CODE_PROMPT, HOUSE_EXAMPLE, PYRAMID_EXAMPLE, CASTLE_EXAMPLE } from "@/constants/codeExamples";
 
 const Index = () => {
   const [code, setCode] = useState(DEFAULT_CODE_PROMPT);
@@ -39,6 +39,8 @@ const Index = () => {
         });
         renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
         renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
         // Controls
         const controls = new OrbitControls(camera, renderer.domElement);
@@ -52,11 +54,44 @@ const Index = () => {
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight.position.set(5, 10, 7.5);
         directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
         scene.add(directionalLight);
         
         // Grid helper
         const gridHelper = new THREE.GridHelper(20, 20);
         scene.add(gridHelper);
+        
+        // Create texture loader
+        const textureLoader = new THREE.TextureLoader();
+        
+        // Generate normal maps for basic textures
+        const generateNormalMap = (color: number) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 256;
+          canvas.height = 256;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return null;
+          
+          // Fill with base color
+          ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+          ctx.fillRect(0, 0, 256, 256);
+          
+          // Add some noise for normal map
+          for (let i = 0; i < 5000; i++) {
+            const x = Math.random() * 256;
+            const y = Math.random() * 256;
+            const radius = 1 + Math.random() * 2;
+            const brightness = Math.random() * 40;
+            
+            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness + 128}, 0.5)`;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          return new THREE.CanvasTexture(canvas);
+        };
         
         // Store scene reference
         sceneRef.current = { 
@@ -65,7 +100,9 @@ const Index = () => {
           renderer, 
           controls, 
           blocks: new Map(), 
-          THREE 
+          THREE,
+          textureLoader,
+          generateNormalMap
         };
         
         // Animation loop
@@ -127,8 +164,18 @@ const Index = () => {
       };
       
       const setBlock = (x: number, y: number, z: number, blockType: string) => {
-        const { scene, blocks, THREE } = sceneRef.current;
+        const { scene, blocks, THREE, generateNormalMap } = sceneRef.current;
         const key = `${x},${y},${z}`;
+        
+        // Skip if blockType is 'air'
+        if (blockType.toLowerCase() === 'air') {
+          // Remove existing block if there is one
+          if (blocks.has(key)) {
+            scene.remove(blocks.get(key));
+            blocks.delete(key);
+          }
+          return;
+        }
         
         // Remove existing block at this position
         if (blocks.has(key)) {
@@ -138,47 +185,90 @@ const Index = () => {
         // Create new block
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         let material;
+        let color;
+        let roughness = 0.7;
+        let metalness = 0.0;
         
         // Apply different colors/textures based on block type
         switch(blockType.toLowerCase()) {
           case 'grass':
-            material = new THREE.MeshStandardMaterial({ color: 0x3bca2b });
+            color = 0x3bca2b;
             break;
           case 'stone':
-            material = new THREE.MeshStandardMaterial({ color: 0x969696 });
+            color = 0x969696;
+            roughness = 0.9;
             break;
           case 'dirt':
-            material = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            color = 0x8b4513;
+            roughness = 0.8;
             break;
           case 'wood':
-            material = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            color = 0x8b4513;
+            roughness = 0.6;
             break;
           case 'water':
-            material = new THREE.MeshStandardMaterial({ 
-              color: 0x1e90ff,
-              transparent: true,
-              opacity: 0.7
-            });
+            color = 0x1e90ff;
+            roughness = 0.1;
+            metalness = 0.2;
             break;
           case 'sand':
-            material = new THREE.MeshStandardMaterial({ color: 0xffef8f });
+            color = 0xffef8f;
+            roughness = 0.8;
             break;
           case 'glass':
-            material = new THREE.MeshStandardMaterial({ 
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0.3
-            });
+            color = 0xffffff;
+            roughness = 0.1;
+            metalness = 0.1;
             break;
           case 'gold':
-            material = new THREE.MeshStandardMaterial({ 
-              color: 0xFFD700,
-              metalness: 0.7,
-              roughness: 0.2
-            });
+            color = 0xFFD700;
+            roughness = 0.2;
+            metalness = 0.8;
+            break;
+          case 'cobblestone':
+            color = 0x555555;
+            roughness = 1.0;
+            break;
+          case 'brick':
+            color = 0xb22222;
+            roughness = 0.8;
+            break;
+          case 'leaves':
+            color = 0x2d8c24;
+            roughness = 0.9;
+            break;
+          case 'bedrock':
+            color = 0x221F26;
+            roughness = 0.9;
             break;
           default:
-            material = new THREE.MeshStandardMaterial({ color: 0xff00ff }); // Magenta for unknown blocks
+            color = 0xff00ff; // Magenta for unknown blocks
+        }
+        
+        // Generate normal map
+        const normalMap = generateNormalMap(color);
+        
+        // Create material based on block type
+        if (blockType.toLowerCase() === 'glass' || blockType.toLowerCase() === 'water') {
+          material = new THREE.MeshPhysicalMaterial({ 
+            color: color,
+            transparent: true,
+            opacity: blockType.toLowerCase() === 'glass' ? 0.3 : 0.7,
+            roughness: roughness,
+            metalness: metalness,
+            normalMap: normalMap,
+            normalScale: new THREE.Vector2(0.1, 0.1),
+            clearcoat: 0.3,
+            clearcoatRoughness: 0.2
+          });
+        } else {
+          material = new THREE.MeshStandardMaterial({ 
+            color: color,
+            roughness: roughness,
+            metalness: metalness,
+            normalMap: normalMap,
+            normalScale: new THREE.Vector2(0.1, 0.1)
+          });
         }
         
         const mesh = new THREE.Mesh(geometry, material);
@@ -263,7 +353,7 @@ const Index = () => {
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5">
             <h2 className="text-xl font-bold mb-3 text-gray-800">Block Types</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {["grass", "stone", "dirt", "wood", "water", "sand", "glass", "gold"].map(block => (
+              {["grass", "stone", "dirt", "wood", "water", "sand", "glass", "gold", "cobblestone", "brick", "leaves", "bedrock", "air"].map(block => (
                 <div 
                   key={block}
                   className="flex items-center gap-2 bg-gray-50 p-3 rounded-md cursor-pointer hover:bg-gray-100 border border-gray-200 transition-all duration-150 shadow-sm"
@@ -280,8 +370,13 @@ const Index = () => {
                         block === "water" ? "#1e90ff" : 
                         block === "sand" ? "#ffef8f" : 
                         block === "glass" ? "#ffffff" : 
-                        block === "gold" ? "#FFD700" : "#ff00ff",
-                      border: "2px solid rgba(0,0,0,0.1)",
+                        block === "gold" ? "#FFD700" :
+                        block === "cobblestone" ? "#555555" :
+                        block === "brick" ? "#b22222" :
+                        block === "leaves" ? "#2d8c24" :
+                        block === "bedrock" ? "#221F26" :
+                        block === "air" ? "transparent" : "#ff00ff",
+                      border: block === "air" ? "2px dashed rgba(0,0,0,0.3)" : "2px solid rgba(0,0,0,0.1)",
                       boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
                     }}
                   />
@@ -310,10 +405,19 @@ const Index = () => {
               >{`
                 // Create a pyramid
                 const size = 10;
-                for (let y = 0; y &lt; size; y++) {
+                for (let y = 0; y < size; y++) {
                   const width = size - y;
                   fill(-width, y, -width, width, y, width, 'sand');
                 }
+              `}</pre>
+              
+              <pre 
+                className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono"
+                onClick={() => setCode(CASTLE_EXAMPLE)}
+              >{`
+                // Create a castle with new blocks
+                fill(-5, 0, -5, 5, 0, 5, 'cobblestone');
+                // ... castle walls, towers, and more
               `}</pre>
             </div>
           </div>
