@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,13 +22,22 @@ const Index = () => {
         <h1 className="text-2xl font-bold">Voxel Sculptor</h1>
         <div className="flex items-center gap-4">
           <p className="text-sm text-gray-300 hidden md:block">Build your blocky world with code</p>
-          <Button 
-            variant="outline" 
-            className="bg-transparent text-white border-white hover:bg-white/10"
-            onClick={() => navigate("/generate")}
-          >
-            AI Generate
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="bg-transparent text-white border-white hover:bg-white/10"
+              onClick={() => navigate("/generate")}
+            >
+              AI Generate
+            </Button>
+            <Button 
+              variant="outline" 
+              className="bg-transparent text-white border-white hover:bg-white/10"
+              onClick={() => navigate("/compare")}
+            >
+              Compare Models
+            </Button>
+          </div>
         </div>
       </header>
       

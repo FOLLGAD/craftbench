@@ -105,6 +105,62 @@ export type Database = {
           },
         ]
       }
+      "mc-generations": {
+        Row: {
+          created_at: string | null
+          generated_code: string
+          id: string
+          model_name: string
+          prompt: string
+        }
+        Insert: {
+          created_at?: string | null
+          generated_code: string
+          id?: string
+          model_name: string
+          prompt: string
+        }
+        Update: {
+          created_at?: string | null
+          generated_code?: string
+          id?: string
+          model_name?: string
+          prompt?: string
+        }
+        Relationships: []
+      }
+      "mc-votes": {
+        Row: {
+          created_at: string | null
+          generation_id: string
+          id: string
+          user_id: string | null
+          vote: number
+        }
+        Insert: {
+          created_at?: string | null
+          generation_id: string
+          id?: string
+          user_id?: string | null
+          vote: number
+        }
+        Update: {
+          created_at?: string | null
+          generation_id?: string
+          id?: string
+          user_id?: string | null
+          vote?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mc-votes_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "mc-generations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message: {
         Row: {
           chat_id: string
