@@ -1,18 +1,34 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import SceneRenderer from "@/components/SceneRenderer";
 import { useNavigate } from "react-router-dom";
+import posthog from "posthog-js";
+import { supabase } from "@/integrations/supabase/client";
 
 const Generate = () => {
   const [prompt, setPrompt] = useState("");
-  const [apiKey, setApiKey] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Initialize PostHog
+    posthog.init('phc_placeholder', { 
+      api_host: 'https://app.posthog.com',
+      loaded: (posthog) => {
+        posthog.identify(
+          `anonymous-${Math.random().toString(36).substring(2, 9)}`,
+          { source: "voxel-sculptor" }
+        );
+      }
+    });
+    
+    // Track page view
+    posthog.capture("page_view", { page: "generate" });
+  }, []);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -20,64 +36,25 @@ const Generate = () => {
       return;
     }
 
-    if (!apiKey.trim()) {
-      toast.error("Please enter your OpenRouter API key");
-      return;
-    }
-
     setIsGenerating(true);
+    posthog.capture("generate_started", { prompt_length: prompt.length });
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": window.location.origin,
-          "X-Title": "Voxel Sculptor"
-        },
-        body: JSON.stringify({
-          model: "anthropic/claude-3-opus:beta",
-          messages: [
-            {
-              role: "system",
-              content: "You are an expert JavaScript programmer specializing in creating 3D voxel scenes. Generate complete, working JavaScript code for the Voxel Sculptor app. The app has two main functions: setBlock(x, y, z, 'blockType') to place individual blocks and fill(x1, y1, z1, x2, y2, z2, 'blockType') to fill a 3D area with blocks. Available block types are: 'grass', 'stone', 'dirt', 'wood', 'water', 'sand', 'glass', 'gold', 'cobblestone', 'brick', 'leaves', 'bedrock', and 'air' (removes blocks). Output ONLY valid JavaScript code without explanations or markdown."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
+      const { data, error } = await supabase.functions.invoke("generate-voxel", {
+        body: { prompt }
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed with status: ${response.status}`);
+      if (error) {
+        throw new Error(error.message);
       }
 
-      const data = await response.json();
-      
-      if (data.choices && data.choices.length > 0) {
-        // Extract code from the response, removing any markdown code blocks if present
-        let generatedText = data.choices[0].message.content;
-        if (generatedText.includes('```javascript')) {
-          generatedText = generatedText.split('```javascript')[1].split('```')[0].trim();
-        } else if (generatedText.includes('```js')) {
-          generatedText = generatedText.split('```js')[1].split('```')[0].trim();
-        } else if (generatedText.includes('```')) {
-          generatedText = generatedText.split('```')[1].split('```')[0].trim();
-        }
-        
-        setGeneratedCode(generatedText);
-        toast.success("Code generated successfully");
-      } else {
-        throw new Error("No completion found in the response");
-      }
+      setGeneratedCode(data.code || "");
+      toast.success("Code generated successfully");
+      posthog.capture("generate_success", { prompt_length: prompt.length });
     } catch (error) {
       console.error("Error generating code:", error);
       toast.error(`Error: ${error instanceof Error ? error.message : "Failed to generate code"}`);
+      posthog.capture("generate_error", { error: String(error) });
     } finally {
       setIsGenerating(false);
     }
@@ -106,23 +83,6 @@ const Generate = () => {
             <p className="text-sm text-gray-600 mb-4">
               Describe the scene you want to create, and an AI will generate the JavaScript code for you.
             </p>
-            
-            <div className="mb-4">
-              <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-1">
-                OpenRouter API Key
-              </label>
-              <Input
-                id="apiKey"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your OpenRouter API key"
-                className="w-full"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Get your API key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">openrouter.ai/keys</a>
-              </p>
-            </div>
             
             <Textarea
               value={prompt}
