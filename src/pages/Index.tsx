@@ -4,9 +4,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { DEFAULT_CODE_PROMPT, HOUSE_EXAMPLE, PYRAMID_EXAMPLE, CASTLE_EXAMPLE } from "@/constants/codeExamples";
 import SceneRenderer from "@/components/SceneRenderer";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [code, setCode] = useState(DEFAULT_CODE_PROMPT);
+  const navigate = useNavigate();
   
   // Clear all blocks from the scene
   const clearBlocks = () => {
@@ -17,7 +19,16 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
       <header className="bg-black text-white p-4 shadow-md z-10 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Voxel Sculptor</h1>
-        <p className="text-sm text-gray-300">Build your blocky world with code</p>
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-gray-300 hidden md:block">Build your blocky world with code</p>
+          <Button 
+            variant="outline" 
+            className="bg-transparent text-white border-white hover:bg-white/10"
+            onClick={() => navigate("/generate")}
+          >
+            AI Generate
+          </Button>
+        </div>
       </header>
       
       <div className="flex flex-col lg:flex-row h-full gap-6 p-6">
