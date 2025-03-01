@@ -68,15 +68,35 @@ const Compare = () => {
     if (!generations.length || hasVoted) return;
     
     const actualIndex = shuffledOrder[index];
-    const generationId = generations[actualIndex].id;
+    const selectedGeneration = generations[actualIndex];
+    
+    if (!selectedGeneration || !selectedGeneration.id) {
+      console.error("Invalid generation selected for voting", { index, actualIndex, generations });
+      toast.error("Error: Could not vote for this generation");
+      return;
+    }
     
     try {
-      console.log("Voting for generation:", generationId);
+      console.log("Voting for generation:", selectedGeneration.id);
+      
+      // First, check if the generation ID exists in the database
+      const { data: generationExists, error: checkError } = await supabase
+        .from("mc-generations")
+        .select("id")
+        .eq("id", selectedGeneration.id)
+        .single();
+        
+      if (checkError || !generationExists) {
+        console.error("Generation doesn't exist:", selectedGeneration.id, checkError);
+        toast.error("Error: Cannot vote for this generation");
+        return;
+      }
+      
       const { error } = await supabase
         .from("mc-votes")
         .insert([
           {
-            generation_id: generationId,
+            generation_id: selectedGeneration.id,
             vote: index + 1,
           }
         ]);
