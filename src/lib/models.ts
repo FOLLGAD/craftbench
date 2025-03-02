@@ -20,6 +20,7 @@ export const getModelRatings = async (modelNames: string[]) => {
 	const { data, error } = await supabase
 		.from("mc-models")
 		.select("model_name, elo")
+		.eq("is_disabled", false)
 		.in("model_name", modelNames);
 
 	if (error) {
