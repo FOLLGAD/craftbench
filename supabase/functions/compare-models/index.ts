@@ -29,6 +29,21 @@ const AVAILABLE_MATERIALS = [
   "cobblestone", "snow", "ice", "clay", "wool", "air"
 ];
 
+// Function to extract code from potential code fences
+function extractCodeFromResponse(content: string): string {
+  // Check if the content contains code fences
+  const codeFenceRegex = /```(?:javascript|js)?\s*\n([\s\S]*?)```/;
+  const match = content.match(codeFenceRegex);
+  
+  if (match && match[1]) {
+    console.log("Code fences detected, extracting code");
+    return match[1].trim();
+  }
+  
+  // If no code fences or they're empty, return the original content
+  return content;
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -100,7 +115,7 @@ serve(async (req) => {
     };
 
     // Create the minecraft-specific system prompt with explicit instruction about format
-    const systemPrompt = `You write minecraft voxel scenes. You MUST provide pure Javascript code without code fences, explanations, or any other text - only JavaScript code. The functions setBlock(x, y, z, "material") and fill(x1, y1, z1, x2, y2, z2, "material") are used to place blocks in the world.
+    const systemPrompt = `You write minecraft voxel scenes. You MUST provide pure Javascript code without code fences, explanations, or any other text - only JavaScript code. If you use code fences or markdown, I will be unable to use your response.
 
 Your materials are:
 ${AVAILABLE_MATERIALS.join(", ")}
@@ -155,7 +170,12 @@ You can be creative, but remember: respond ONLY with plain JavaScript code and n
         const data = await response.json();
         console.log(`Full response from ${modelId}:`, JSON.stringify(data));
         
-        const generatedCode = data.choices[0]?.message?.content || "// No code generated";
+        // Get the raw content from the LLM
+        const rawContent = data.choices[0]?.message?.content || "// No code generated";
+        
+        // Extract code if the content contains code fences
+        const generatedCode = extractCodeFromResponse(rawContent);
+        
         console.log(`Successfully generated code with ${modelId}`);
 
         // Generate UUID for the new generation
