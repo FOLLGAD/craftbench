@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -102,6 +101,12 @@ Use ONLY vanilla JavaScript. Do not use any external libraries, frameworks, or d
 
 Your materials are:
 ${AVAILABLE_MATERIALS.join(", ")}
+
+Here is an example:
+\`\`\`
+// create a 6 block high 2x2 stone pillar
+fill(1, 0, 0, 2, 5, 1, "stone");
+\`\`\`
 
 You can be creative, but remember: respond ONLY with plain JavaScript code, using ONLY vanilla JS and the two provided functions.`;
 
