@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -222,24 +221,37 @@ async function storeFallbackGeneration(modelId: string, prompt: string, errorMes
   };
 }
 
-// Function to store comparison in database
+// Function to store comparison in database and return the comparison object
 async function storeComparisonInDatabase(generation1: any, generation2: any, prompt: string, supabase: any) {
   try {
+    // Generate UUID for the comparison
+    const comparisonId = crypto.randomUUID();
+    
+    // Create the comparison object
+    const comparisonObject = {
+      id: comparisonId,
+      generation_a_id: generation1.id,
+      generation_b_id: generation2.id,
+      prompt
+    };
+    
+    // Insert the comparison into the database
     const { error: comparisonError } = await supabase
       .from("mc-comparisons")
-      .insert({
-        generation_a_id: generation1.id,
-        generation_b_id: generation2.id,
-        prompt
-      });
+      .insert(comparisonObject);
 
     if (comparisonError) {
       console.error("Comparison insert error:", comparisonError);
-    } else {
-      console.log("Comparison stored successfully");
+      throw new Error(`Failed to store comparison: ${comparisonError.message}`);
     }
+    
+    console.log("Comparison stored successfully with ID:", comparisonId);
+    
+    // Return the comparison object so it can be included in the response
+    return comparisonObject;
   } catch (error) {
     console.error("Error storing comparison:", error);
+    throw new Error(`Error storing comparison: ${error.message}`);
   }
 }
 
@@ -295,13 +307,14 @@ serve(async (req) => {
       const generations = [generation1, generation2];
       const shuffledOrder = Math.random() > 0.5 ? [0, 1] : [1, 0];
 
-      // Store the comparison in the database
-      await storeComparisonInDatabase(generation1, generation2, prompt, supabase);
+      // Store the comparison in the database and get the comparison object
+      const comparison = await storeComparisonInDatabase(generation1, generation2, prompt, supabase);
 
       return new Response(
         JSON.stringify({ 
           generations,
-          shuffledOrder
+          shuffledOrder,
+          comparison // Include the comparison object in the response
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" }

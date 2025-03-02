@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,37 +69,13 @@ const Compare = () => {
 
       console.log("Received data:", data);
       
-      // Create a local comparison object if one doesn't exist in the response
-      let comparisonObj = data.comparison;
-      if (!comparisonObj) {
-        const comparisonId = generateUUID(); // Generate a UUID for the comparison
-        
-        // Create the comparison object
-        comparisonObj = {
-          id: comparisonId,
-          generation_a_id: data.generations[0].id,
-          generation_b_id: data.generations[1].id,
-          prompt: prompt
-        };
-        
-        console.log("Created local comparison:", comparisonObj);
-        
-        // Insert the comparison into the database
-        const { error: insertError } = await supabase
-          .from("mc-comparisons")
-          .insert(comparisonObj);
-          
-        if (insertError) {
-          console.error("Error inserting comparison:", insertError);
-          toast.error("Failed to save comparison data");
-          // We'll continue with the local comparison object anyway
-        } else {
-          console.log("Successfully inserted comparison into database");
-        }
+      // If there's no comparison in the response, we can't proceed properly
+      if (!data.comparison) {
+        throw new Error("No comparison ID received from server. Please try again.");
       }
       
       setGenerations(data.generations);
-      setComparison(comparisonObj);
+      setComparison(data.comparison);
       setShuffledOrder(data.shuffledOrder || [0, 1]);
       toast.success("Generated code from two models!");
     } catch (error) {
@@ -117,19 +92,17 @@ const Compare = () => {
     if (!generations.length || hasVoted || !comparisonId) return;
     
     try {
-      console.log("Voting for comparison:", comparisonId, "with choice:", index + 1);
-      
-      // Get the selected generation's ID
+      // Get the selected generation's ID based on the shuffled order
       const selectedGenId = generations[shuffledOrder[index]].id;
+      
+      console.log("Voting for comparison:", comparisonId, "with generation:", selectedGenId);
       
       const { error } = await supabase
         .from("mc-votes")
         .insert({
           comparison_id: comparisonId,
-          generation_id: selectedGenId, // This is still required by the database
+          generation_id: selectedGenId, // This should point to an mc-generations record
           vote: index + 1
-          // The user_id will be automatically set to auth.uid() for logged-in users
-          // or null for anonymous users due to the default we set in the migration
         });
 
       if (error) {
