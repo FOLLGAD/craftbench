@@ -135,11 +135,17 @@ const Vote = () => {
     generationId: string
   ) => {
     try {
+      // Get the current user ID
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      
       // Add the vote value (1) to fix the not-null constraint
+      // Also now include the user_id in the vote record
       const { error } = await supabase.from("mc-votes").insert({
         comparison_id: comparisonId,
         generation_id: generationId,
-        vote: 1  // Adding the required vote value
+        vote: 1,  // Adding the required vote value
+        user_id: userId  // Add user_id to associate the vote with the user
       });
 
       if (error) throw error;
