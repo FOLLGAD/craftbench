@@ -170,6 +170,7 @@ export type Database = {
       }
       "mc-votes": {
         Row: {
+          comparison_id: string | null
           created_at: string | null
           generation_id: string
           id: string
@@ -177,6 +178,7 @@ export type Database = {
           vote: number
         }
         Insert: {
+          comparison_id?: string | null
           created_at?: string | null
           generation_id: string
           id?: string
@@ -184,6 +186,7 @@ export type Database = {
           vote: number
         }
         Update: {
+          comparison_id?: string | null
           created_at?: string | null
           generation_id?: string
           id?: string
@@ -192,10 +195,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "mc-votes_generation_id_fkey"
-            columns: ["generation_id"]
+            foreignKeyName: "mc-votes_comparison_id_fkey"
+            columns: ["comparison_id"]
             isOneToOne: false
-            referencedRelation: "mc-generations"
+            referencedRelation: "mc-comparisons"
             referencedColumns: ["id"]
           },
         ]

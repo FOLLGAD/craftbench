@@ -80,7 +80,7 @@ const Compare = () => {
     if (!generations.length || hasVoted || !comparisonId) return;
     
     try {
-      console.log("Voting for comparison:", comparisonId, "with vote:", index + 1);
+      console.log("Voting for comparison:", comparisonId, "with choice:", index + 1);
       
       const { error } = await supabase
         .from("mc-votes")
@@ -88,8 +88,8 @@ const Compare = () => {
           {
             comparison_id: comparisonId,
             vote: index + 1,
-            // The user ID will be null for anonymous users
-            // and will be automatically filled with auth.uid() for authenticated users
+            // The user ID will be automatically set to auth.uid() for logged-in users
+            // or null for anonymous users due to the default we set in the migration
           }
         ]);
 
