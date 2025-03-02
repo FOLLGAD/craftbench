@@ -238,6 +238,18 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
         normalMaps.set('leaves', generateNormalMap(0x2d8c24, 'bumpy', 0.6));
         normalMaps.set('bedrock', generateNormalMap(0x221F26, 'rough', 1.0));
         
+        // Add normal maps for the remaining materials
+        normalMaps.set('lava', generateNormalMap(0xFF4500, 'smooth', 0.9));
+        normalMaps.set('gravel', generateNormalMap(0x777777, 'rough', 0.8));
+        normalMaps.set('iron', generateNormalMap(0xCCCCCC, 'bumpy', 0.7));
+        normalMaps.set('diamond', generateNormalMap(0x00FFFF, 'bumpy', 0.9));
+        normalMaps.set('emerald', generateNormalMap(0x50C878, 'bumpy', 0.8));
+        normalMaps.set('obsidian', generateNormalMap(0x1A1A1A, 'rough', 0.9));
+        normalMaps.set('snow', generateNormalMap(0xFFFFFF, 'noise', 0.4));
+        normalMaps.set('ice', generateNormalMap(0xADD8E6, 'smooth', 0.2));
+        normalMaps.set('clay', generateNormalMap(0xB2B2B2, 'noise', 0.6));
+        normalMaps.set('wool', generateNormalMap(0xF5F5F5, 'noise', 0.5));
+        
         // Store scene reference
         sceneRef.current = { 
           scene, 
@@ -476,6 +488,64 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
         roughness = 0.9;
         normalScale.set(1.5, 1.5);
         break;
+
+      // Add cases for new materials
+      case 'lava':
+        color = 0xFF4500; // Orange-red
+        roughness = 0.3;
+        metalness = 0.0;
+        normalScale.set(0.9, 0.9);
+        break;
+      case 'gravel':
+        color = 0x777777; // Medium gray
+        roughness = 0.9;
+        normalScale.set(0.8, 0.8);
+        break;
+      case 'iron':
+        color = 0xCCCCCC; // Silver
+        roughness = 0.3;
+        metalness = 0.7;
+        normalScale.set(0.7, 0.7);
+        break;
+      case 'diamond':
+        color = 0x00FFFF; // Cyan
+        roughness = 0.1;
+        metalness = 0.9;
+        normalScale.set(0.9, 0.9);
+        break;
+      case 'emerald':
+        color = 0x50C878; // Emerald green
+        roughness = 0.2;
+        metalness = 0.8;
+        normalScale.set(0.8, 0.8);
+        break;
+      case 'obsidian':
+        color = 0x1A1A1A; // Very dark gray
+        roughness = 0.8;
+        metalness = 0.3;
+        normalScale.set(0.9, 0.9);
+        break;
+      case 'snow':
+        color = 0xFFFFFF; // White
+        roughness = 0.9;
+        normalScale.set(0.4, 0.4);
+        break;
+      case 'ice':
+        color = 0xADD8E6; // Light blue
+        roughness = 0.1;
+        metalness = 0.1;
+        normalScale.set(0.2, 0.2);
+        break;
+      case 'clay':
+        color = 0xB2B2B2; // Light gray
+        roughness = 0.8;
+        normalScale.set(0.6, 0.6);
+        break;
+      case 'wool':
+        color = 0xF5F5F5; // Off-white
+        roughness = 0.95;
+        normalScale.set(0.5, 0.5);
+        break;
       default:
         color = 0xff00ff; // Magenta for unknown blocks
     }
@@ -484,17 +554,39 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
     normalMap = normalMaps.get(blockType.toLowerCase()) || normalMaps.get('stone');
     
     // Create material based on block type
-    if (blockType.toLowerCase() === 'glass' || blockType.toLowerCase() === 'water') {
+    if (blockType.toLowerCase() === 'glass' || blockType.toLowerCase() === 'water' || blockType.toLowerCase() === 'ice') {
       material = new THREE.MeshPhysicalMaterial({ 
         color: color,
         transparent: true,
-        opacity: blockType.toLowerCase() === 'glass' ? 0.3 : 0.7,
+        opacity: blockType.toLowerCase() === 'glass' ? 0.3 : 
+                 blockType.toLowerCase() === 'ice' ? 0.5 : 0.7,
         roughness: roughness,
         metalness: metalness,
         normalMap: normalMap,
         normalScale: normalScale,
         clearcoat: 0.3,
         clearcoatRoughness: 0.2
+      });
+    } else if (blockType.toLowerCase() === 'lava') {
+      material = new THREE.MeshStandardMaterial({ 
+        color: color,
+        roughness: roughness,
+        metalness: metalness,
+        normalMap: normalMap,
+        normalScale: normalScale,
+        emissive: 0xFF4500,
+        emissiveIntensity: 0.5
+      });
+    } else if (['diamond', 'emerald', 'gold', 'iron'].includes(blockType.toLowerCase())) {
+      material = new THREE.MeshPhysicalMaterial({ 
+        color: color,
+        roughness: roughness,
+        metalness: metalness,
+        normalMap: normalMap,
+        normalScale: normalScale,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.1,
+        reflectivity: 1.0
       });
     } else {
       material = new THREE.MeshStandardMaterial({ 

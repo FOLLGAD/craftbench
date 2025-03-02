@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -5,6 +6,42 @@ import { toast } from "sonner";
 import { DEFAULT_CODE_PROMPT, HOUSE_EXAMPLE, PYRAMID_EXAMPLE, CASTLE_EXAMPLE } from "@/constants/codeExamples";
 import SceneRenderer from "@/components/SceneRenderer";
 import { useNavigate } from "react-router-dom";
+
+// Define all supported material types
+const MATERIALS = [
+  "grass", "stone", "dirt", "wood", "leaves", "glass", 
+  "water", "lava", "sand", "gravel", "gold", "iron", 
+  "diamond", "emerald", "bedrock", "obsidian", "brick", 
+  "cobblestone", "snow", "ice", "clay", "wool", "air"
+];
+
+// Material color mapping for the UI
+const MATERIAL_COLORS = {
+  grass: "#3bca2b",
+  stone: "#969696",
+  dirt: "#8b4513",
+  wood: "#8b4513",
+  leaves: "#2d8c24",
+  glass: "#ffffff",
+  water: "#1e90ff",
+  lava: "#FF4500",
+  sand: "#ffef8f",
+  gravel: "#777777",
+  gold: "#FFD700",
+  iron: "#CCCCCC",
+  diamond: "#00FFFF",
+  emerald: "#50C878",
+  bedrock: "#221F26",
+  obsidian: "#1A1A1A",
+  brick: "#b22222",
+  cobblestone: "#555555",
+  snow: "#FFFFFF",
+  ice: "#ADD8E6",
+  clay: "#B2B2B2",
+  wool: "#F5F5F5",
+  air: "transparent"
+};
+
 const Playground = () => {
   const [code, setCode] = useState(DEFAULT_CODE_PROMPT);
   const navigate = useNavigate();
@@ -13,6 +50,7 @@ const Playground = () => {
   const clearBlocks = () => {
     setCode("");
   };
+  
   return <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
       <header className="bg-black text-white p-4 shadow-md z-10 flex items-center justify-between">
         <h1 className="text-2xl font-bold">McLovin ❤️</h1>
@@ -52,14 +90,23 @@ const Playground = () => {
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5">
             <h2 className="text-xl font-bold mb-3 text-gray-800">Block Types</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {["grass", "stone", "dirt", "wood", "water", "sand", "glass", "gold", "cobblestone", "brick", "leaves", "bedrock", "air"].map(block => <div key={block} className="flex items-center gap-2 bg-gray-50 p-3 rounded-md cursor-pointer hover:bg-gray-100 border border-gray-200 transition-all duration-150 shadow-sm" onClick={() => setCode(code => `${code}\nsetBlock(0, 0, 0, '${block}');`)}>
-                  <div className="w-6 h-6 rounded" style={{
-                backgroundColor: block === "grass" ? "#3bca2b" : block === "stone" ? "#969696" : block === "dirt" ? "#8b4513" : block === "wood" ? "#8b4513" : block === "water" ? "#1e90ff" : block === "sand" ? "#ffef8f" : block === "glass" ? "#ffffff" : block === "gold" ? "#FFD700" : block === "cobblestone" ? "#555555" : block === "brick" ? "#b22222" : block === "leaves" ? "#2d8c24" : block === "bedrock" ? "#221F26" : block === "air" ? "transparent" : "#ff00ff",
-                border: block === "air" ? "2px dashed rgba(0,0,0,0.3)" : "2px solid rgba(0,0,0,0.1)",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-              }} />
+              {MATERIALS.map(block => (
+                <div 
+                  key={block} 
+                  className="flex items-center gap-2 bg-gray-50 p-3 rounded-md cursor-pointer hover:bg-gray-100 border border-gray-200 transition-all duration-150 shadow-sm" 
+                  onClick={() => setCode(code => `${code}\nsetBlock(0, 0, 0, '${block}');`)}
+                >
+                  <div 
+                    className="w-6 h-6 rounded" 
+                    style={{
+                      backgroundColor: MATERIAL_COLORS[block as keyof typeof MATERIAL_COLORS],
+                      border: block === "air" ? "2px dashed rgba(0,0,0,0.3)" : "2px solid rgba(0,0,0,0.1)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    }} 
+                  />
                   <span className="text-sm font-medium capitalize">{block}</span>
-                </div>)}
+                </div>
+              ))}
             </div>
           </div>
           
@@ -104,4 +151,5 @@ const Playground = () => {
       </div>
     </div>;
 };
+
 export default Playground;
