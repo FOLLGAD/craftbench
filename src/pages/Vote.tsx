@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -176,7 +177,33 @@ const Vote = () => {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       
-      console.log("Voting with user ID:", userId);
+      // Validate that we have a user ID before proceeding
+      if (!userId) {
+        console.error("User ID is null, cannot submit vote");
+        // Try to sign in anonymously if we don't have a user ID
+        const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
+        
+        if (signInError) {
+          throw new Error("Failed to create user session: " + signInError.message);
+        }
+        
+        // Use the newly created user ID
+        if (!signInData.user?.id) {
+          throw new Error("Failed to create user ID for voting");
+        }
+        
+        console.log("Created new anonymous user for voting:", signInData.user.id);
+      }
+      
+      // Get the latest user ID (either existing or newly created)
+      const { data: latestUserData } = await supabase.auth.getUser();
+      const latestUserId = latestUserData.user?.id;
+      
+      if (!latestUserId) {
+        throw new Error("Unable to get valid user ID for voting");
+      }
+      
+      console.log("Voting with user ID:", latestUserId);
       console.log("Comparison ID:", comparisonId);
       console.log("Generation ID:", generationId);
       
@@ -184,13 +211,12 @@ const Vote = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       console.log("Current session:", sessionData);
       
-      // Add the vote value (1) to fix the not-null constraint
-      // Also now include the user_id in the vote record
+      // Insert the vote with the validated user ID
       const { data: voteData, error } = await supabase.from("mc-votes").insert({
         comparison_id: comparisonId,
         generation_id: generationId,
-        vote: 1,  // Adding the required vote value
-        user_id: userId  // Add user_id to associate the vote with the user
+        vote: 1,
+        user_id: latestUserId  // Always use the validated user ID
       }).select();
 
       if (error) {
