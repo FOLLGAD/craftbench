@@ -53,8 +53,8 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			0.1,
 			1000,
 		);
-		camera.position.set(10, 10, 10);
-		camera.lookAt(0, 0, 0);
+		camera.position.set(25, 15, 25);
+		camera.lookAt(0, -10, 0);
 
 		// Renderer
 		const renderer = new THREE.WebGLRenderer({
@@ -119,7 +119,7 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				camera.position.z = radius * Math.cos(autoRotateAngle.current);
 
 				// Keep the camera looking at the center
-				camera.lookAt(0, 0, 0);
+				camera.lookAt(0, -10, 0);
 			}
 
 			controls.update();
@@ -537,12 +537,14 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			worker.onmessage = (e) => {
 				const data = e.data;
 
+				const Y_OFFSET = 10; // ai likes placing things below origin
+
 				if (data.action === "setBlock") {
 					const { x, y, z, blockType } = data.params;
-					handleSetBlock(x, y, z, blockType);
+					handleSetBlock(x, y + Y_OFFSET, z, blockType);
 				} else if (data.action === "fill") {
 					const { x1, y1, z1, x2, y2, z2, blockType } = data.params;
-					handleFill(x1, y1, z1, x2, y2, z2, blockType);
+					handleFill(x1, y1 + Y_OFFSET, z1, x2, y2 + Y_OFFSET, z2, blockType);
 				} else if (data.action === "complete") {
 					clearTimeout(timeoutId);
 					worker.terminate();
