@@ -14,10 +14,18 @@ interface GenerationCardProps {
   };
   isSelected: boolean;
   hasVoted: boolean;
-  onVote: (index: number) => void;
+  comparisonId: string;
+  onVote: (index: number, comparisonId: string) => void;
 }
 
-const GenerationCard = ({ index, generation, isSelected, hasVoted, onVote }: GenerationCardProps) => {
+const GenerationCard = ({ 
+  index, 
+  generation, 
+  isSelected, 
+  hasVoted, 
+  comparisonId, 
+  onVote 
+}: GenerationCardProps) => {
   // Format the model name to be more readable
   const formatModelName = (modelName: string) => {
     // Remove organization prefix (e.g., "anthropic/", "openai/")
@@ -48,7 +56,7 @@ const GenerationCard = ({ index, generation, isSelected, hasVoted, onVote }: Gen
       </div>
 
       <Button
-        onClick={() => onVote(index)}
+        onClick={() => onVote(index, comparisonId)}
         disabled={hasVoted}
         variant={isSelected ? "default" : "outline"}
         className={`w-full ${isSelected ? "bg-green-600 hover:bg-green-700" : ""}`}

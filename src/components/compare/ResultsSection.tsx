@@ -14,7 +14,8 @@ interface ResultsSectionProps {
   shuffledOrder: number[];
   selectedGeneration: number | null;
   hasVoted: boolean;
-  onVote: (index: number) => void;
+  comparisonId: string;
+  onVote: (index: number, comparisonId: string) => void;
   onReset: () => void;
 }
 
@@ -23,6 +24,7 @@ const ResultsSection = ({
   shuffledOrder,
   selectedGeneration,
   hasVoted,
+  comparisonId,
   onVote,
   onReset,
 }: ResultsSectionProps) => {
@@ -46,6 +48,7 @@ const ResultsSection = ({
             generation={generations[shuffledOrder[index]]}
             isSelected={selectedGeneration === index}
             hasVoted={hasVoted}
+            comparisonId={comparisonId}
             onVote={onVote}
           />
         ))}

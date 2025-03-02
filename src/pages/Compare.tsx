@@ -15,10 +15,18 @@ interface Generation {
   generated_code: string;
 }
 
+interface Comparison {
+  id: string;
+  generation_a_id: string;
+  generation_b_id: string;
+  prompt: string;
+}
+
 const Compare = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generations, setGenerations] = useState<Generation[]>([]);
+  const [comparison, setComparison] = useState<Comparison | null>(null);
   const [selectedGeneration, setSelectedGeneration] = useState<number | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [shuffledOrder, setShuffledOrder] = useState<number[]>([0, 1]);
@@ -32,6 +40,7 @@ const Compare = () => {
 
     setIsGenerating(true);
     setGenerations([]);
+    setComparison(null);
     setSelectedGeneration(null);
     setHasVoted(false);
     setError(null);
@@ -46,13 +55,15 @@ const Compare = () => {
         throw new Error(functionError.message || "Failed to generate code");
       }
 
-      if (!data || !data.generations || data.generations.length !== 2) {
+      if (!data || !data.generations || data.generations.length !== 2 || !data.comparison) {
         throw new Error("Invalid response from server");
       }
 
       console.log("Received generations:", data.generations);
+      console.log("Received comparison:", data.comparison);
       
       setGenerations(data.generations);
+      setComparison(data.comparison);
       setShuffledOrder(data.shuffledOrder || [0, 1]);
       toast.success("Generated code from two models!");
     } catch (error) {
@@ -65,27 +76,20 @@ const Compare = () => {
     }
   };
 
-  const handleVote = async (index: number) => {
-    if (!generations.length || hasVoted) return;
-    
-    const actualIndex = shuffledOrder[index];
-    const selectedGeneration = generations[actualIndex];
-    
-    if (!selectedGeneration || !selectedGeneration.id) {
-      console.error("Invalid generation selected for voting", { index, actualIndex, generations });
-      toast.error("Error: Could not vote for this generation");
-      return;
-    }
+  const handleVote = async (index: number, comparisonId: string) => {
+    if (!generations.length || hasVoted || !comparisonId) return;
     
     try {
-      console.log("Voting for generation:", selectedGeneration.id);
+      console.log("Voting for comparison:", comparisonId, "with vote:", index + 1);
       
       const { error } = await supabase
         .from("mc-votes")
         .insert([
           {
-            generation_id: selectedGeneration.id,
+            comparison_id: comparisonId,
             vote: index + 1,
+            // The user ID will be null for anonymous users
+            // and will be automatically filled with auth.uid() for authenticated users
           }
         ]);
 
@@ -105,6 +109,7 @@ const Compare = () => {
 
   const resetComparison = () => {
     setGenerations([]);
+    setComparison(null);
     setSelectedGeneration(null);
     setHasVoted(false);
   };
@@ -137,13 +142,14 @@ const Compare = () => {
         {error && !isGenerating && <ErrorState error={error} onReset={resetError} />}
 
         {/* Results Section */}
-        {generations.length > 0 && !isGenerating && !error && (
+        {generations.length > 0 && !isGenerating && !error && comparison && (
           <div className="w-full animate-scaleIn">
             <ResultsSection 
               generations={generations}
               shuffledOrder={shuffledOrder}
               selectedGeneration={selectedGeneration}
               hasVoted={hasVoted}
+              comparisonId={comparison.id}
               onVote={handleVote}
               onReset={resetComparison}
             />
