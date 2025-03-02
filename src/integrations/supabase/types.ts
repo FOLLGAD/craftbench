@@ -166,6 +166,32 @@ export type Database = {
           model_name?: string
           prompt?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "mc-generations_model_name_fkey"
+            columns: ["model_name"]
+            isOneToOne: false
+            referencedRelation: "mc-models"
+            referencedColumns: ["model_name"]
+          },
+        ]
+      }
+      "mc-models": {
+        Row: {
+          created_at: string
+          elo: number
+          model_name: string
+        }
+        Insert: {
+          created_at?: string
+          elo?: number
+          model_name: string
+        }
+        Update: {
+          created_at?: string
+          elo?: number
+          model_name?: string
+        }
         Relationships: []
       }
       "mc-votes": {
