@@ -48,7 +48,7 @@ const Playground = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
+		<div className="min-h-screen bg-gray-50 overflow-hidden flex flex-col">
 			<header className="bg-black text-white p-4 shadow-md z-10 flex items-center justify-between">
 				<h1 className="text-2xl font-bold">McLovin ❤️</h1>
 				<div className="flex items-center gap-4">

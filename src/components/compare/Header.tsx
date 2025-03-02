@@ -8,7 +8,7 @@ const Header = () => {
 			<div className="container mx-auto flex items-center justify-between">
 				<div className="flex items-center">
 					<Link to="/">
-						<h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">Benchcraft</h1>
+						<h1 className="text-2xl font-bold text-primary">Benchcraft</h1>
 					</Link>
 					<span className="hidden md:inline-block text-sm text-gray-500 ml-4">Best AI benchmark – compare LLMs on spatiovisual tasks</span>
 				</div>

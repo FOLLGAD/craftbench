@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ const HeroSection = () => {
 	return (
 		<section className="mb-12 pt-6 w-full flex justify-center">
 			<div className="max-w-3xl sm:p-8 w-full">
-				<h1 className="text-4xl font-bold mb-6 text-center bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+				<h1 className="text-4xl font-bold mb-6 text-center text-primary">
 					Benchcraft
 				</h1>
 
@@ -46,7 +47,7 @@ const HeroSection = () => {
 						<Button
 							onClick={handleCreateComparison}
 							disabled={!prompt.trim() || creatingComparison}
-							className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 rounded-full"
+							className="bg-purple-600 hover:bg-purple-700 text-white rounded-full"
 							aria-label="Generate with models"
 						>
 							<Sparkles className="mr-2" />{" "}

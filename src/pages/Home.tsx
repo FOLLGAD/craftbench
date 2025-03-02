@@ -1,3 +1,4 @@
+
 import ErrorState from "@/components/compare/ErrorState";
 import Header from "@/components/compare/Header";
 import LoadingState from "@/components/compare/LoadingState";
@@ -172,7 +173,7 @@ const Home = () => {
 								<p className="text-gray-500 mb-4">No comparisons found</p>
 								<Button
 									onClick={() => document.querySelector("input")?.focus()}
-									className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white"
+									className="bg-purple-600 hover:bg-purple-700 text-white"
 								>
 									Create Your First Comparison
 								</Button>
@@ -195,7 +196,7 @@ const Home = () => {
 						<Button
 							variant="outline"
 							size="lg"
-							className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white hover:text-white text-xl py-6 px-12"
+							className="bg-purple-600 hover:bg-purple-700 text-white hover:text-white text-xl py-6 px-12"
 							onClick={() => setCurrentPage((c) => c + 1)}
 						>
 							Next
