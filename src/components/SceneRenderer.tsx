@@ -28,6 +28,8 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const sceneRef = useRef<SceneRef | null>(null);
 	const [inited, setInited] = useState(false);
+	const userInteractedRef = useRef(false);
+	const autoRotateAngle = useRef(0);
 
 	useEffect(() => {
 		console.log(code);
@@ -91,9 +93,34 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			THREE,
 		};
 
+		// Add event listeners to detect user interaction
+		const handleUserInteraction = () => {
+			userInteractedRef.current = true;
+		};
+
+		renderer.domElement.addEventListener("pointerdown", handleUserInteraction);
+		renderer.domElement.addEventListener("wheel", handleUserInteraction);
+		renderer.domElement.addEventListener("touchstart", handleUserInteraction);
+
 		const animate = () => {
 			const animationFrameId = requestAnimationFrame(animate);
 			sceneRef.current.animationFrameId = animationFrameId;
+
+			// Auto-rotate camera around the scene if user hasn't interacted
+			if (!userInteractedRef.current) {
+				// Increment the angle (0.005 radians per frame is a slow rotation)
+				autoRotateAngle.current += 0.005;
+
+				// Calculate new camera position in a circle around the center
+				const radius = Math.sqrt(
+					camera.position.x ** 2 + camera.position.z ** 2,
+				);
+				camera.position.x = radius * Math.sin(autoRotateAngle.current);
+				camera.position.z = radius * Math.cos(autoRotateAngle.current);
+
+				// Keep the camera looking at the center
+				camera.lookAt(0, 0, 0);
+			}
 
 			controls.update();
 			renderer.render(scene, camera);
@@ -116,6 +143,15 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		// Cleanup function for useEffect
 		return () => {
 			window.removeEventListener("resize", handleResize);
+			renderer.domElement.removeEventListener(
+				"pointerdown",
+				handleUserInteraction,
+			);
+			renderer.domElement.removeEventListener("wheel", handleUserInteraction);
+			renderer.domElement.removeEventListener(
+				"touchstart",
+				handleUserInteraction,
+			);
 
 			// Cancel any pending animation frame
 			if (sceneRef.current?.animationFrameId) {
