@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useVote } from "@/hooks/use-vote";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp } from "lucide-react";
+import { ShareIcon, ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,7 @@ import {
 } from "../ui/dialog";
 import { Textarea } from "../ui/textarea";
 import { Skeleton } from "../ui/skeleton";
+import { Link } from "react-router-dom";
 
 interface VoteComparisonProps {
 	comparisonId: string;
@@ -126,10 +127,28 @@ const VoteComparison = ({
 		<div className="mb-8 shadow-lg rounded-lg p-4 border border-gray-200 bg-white">
 			{comparison.data ? (
 				<>
-					<div className="mb-6 py-0 text-center">
+					<div className="mb-6 py-0 text-center flex items-center justify-center">
 						<p className="text-gray-700 text-2xl font-semibold">
-							"{comparison.data?.prompt.trim()}"
+							<Link
+								to={`/compare/${comparison.data.id}/${encodeURIComponent(
+									comparison.data.prompt.replace(/ /g, "-"),
+								)}`}
+								className="hover:underline text-blue-500"
+							>
+								"{comparison.data?.prompt.trim()}"
+							</Link>
 						</p>
+						<ShareIcon
+							className="w-4 h-4 ml-2 inline-block cursor-pointer text-gray-500 hover:text-gray-700 hover:underline"
+							onClick={() => {
+								navigator.clipboard.writeText(
+									`${window.location.origin}/compare/${comparison.data.id}/${encodeURIComponent(
+										comparison.data.prompt.replace(/ /g, "-"),
+									)}`,
+								);
+								toast.success("Copied to clipboard");
+							}}
+						/>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
