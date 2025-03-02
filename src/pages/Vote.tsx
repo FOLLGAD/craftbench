@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +33,34 @@ const Vote = () => {
   const [votedComparisons, setVotedComparisons] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Perform anonymous sign-in when the component loads
+  useEffect(() => {
+    const signInAnonymously = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      // Only sign in if no active session
+      if (!sessionData.session) {
+        console.log("No active session, signing in anonymously");
+        const { data, error } = await supabase.auth.signInAnonymously();
+        
+        if (error) {
+          console.error("Anonymous sign-in error:", error.message);
+          toast({
+            title: "Authentication Error",
+            description: "Failed to create anonymous session. Some features may not work.",
+            variant: "destructive",
+          });
+        } else {
+          console.log("Anonymous sign-in successful:", data.user?.id);
+        }
+      } else {
+        console.log("Using existing session for user:", sessionData.session.user.id);
+      }
+    };
+
+    signInAnonymously();
+  }, [toast]);
 
   // Fetch comparisons that have at least one vote
   const { data, isLoading, error, refetch } = useQuery({
