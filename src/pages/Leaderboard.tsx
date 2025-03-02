@@ -19,6 +19,7 @@ import { getAllModelStats } from "@/lib/models";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Medal, Trophy } from "lucide-react";
 import { useState } from "react";
+import Footer from "@/components/common/Footer";
 
 type SortField = "elo" | "wins" | "losses" | "winRate";
 type SortDirection = "asc" | "desc";
@@ -90,9 +91,9 @@ const Leaderboard = () => {
 	}
 
 	return (
-		<div>
+		<div className="min-h-screen bg-gray-50 flex flex-col">
 			<Header />
-			<div className="container mx-auto py-10">
+			<div className="container mx-auto py-10 flex-grow">
 				<h1 className="text-3xl font-bold mb-6">Model Leaderboard</h1>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -316,6 +317,7 @@ const Leaderboard = () => {
 					</TabsContent>
 				</Tabs>
 			</div>
+			<Footer />
 		</div>
 	);
 };

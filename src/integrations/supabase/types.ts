@@ -180,16 +180,19 @@ export type Database = {
         Row: {
           created_at: string
           elo: number
+          is_disabled: boolean
           model_name: string
         }
         Insert: {
           created_at?: string
           elo?: number
+          is_disabled?: boolean
           model_name: string
         }
         Update: {
           created_at?: string
           elo?: number
+          is_disabled?: boolean
           model_name?: string
         }
         Relationships: []

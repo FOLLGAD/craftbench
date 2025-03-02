@@ -1,6 +1,7 @@
 import ErrorState from "@/components/compare/ErrorState";
 import Header from "@/components/compare/Header";
 import LoadingState from "@/components/compare/LoadingState";
+import Footer from "@/components/common/Footer";
 import HeroSection from "@/components/home/HeroSection";
 import { Button } from "@/components/ui/button";
 import VoteComparison from "@/components/vote/VoteComparison";
@@ -120,10 +121,10 @@ const Home = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-50">
+		<div className="min-h-screen bg-gray-50 flex flex-col">
 			<Header />
 
-			<main className="container mx-auto px-4 py-8">
+			<main className="container mx-auto px-4 py-8 flex-grow">
 				<HeroSection />
 
 				<section>
@@ -189,6 +190,8 @@ const Home = () => {
 					</div>
 				</section>
 			</main>
+
+			<Footer />
 		</div>
 	);
 };
