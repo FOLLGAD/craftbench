@@ -13,6 +13,15 @@ import {
 } from "../../lib/models";
 import { useVote } from "@/hooks/use-vote";
 import { toast } from "sonner";
+import {
+	Dialog,
+	DialogHeader,
+	DialogContent,
+	DialogTitle,
+	DialogTrigger,
+	DialogDescription,
+} from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
 
 interface VoteComparisonProps {
 	comparisonId: string;
@@ -98,6 +107,8 @@ const VoteComparison = ({
 		return Math.round((voteCount / totalVotes) * 100);
 	};
 
+	const adminCode = localStorage.getItem("admin_code") === "true";
+
 	return (
 		<div className="mb-8">
 			<div className="mb-6 p-4 py-0">
@@ -118,6 +129,25 @@ const VoteComparison = ({
 									{hasVoted
 										? formatModelName(generation.model_name)
 										: `Model ${index + 1}`}
+									{adminCode && (
+										<Dialog>
+											<DialogTrigger asChild>
+												<Button variant="outline">Code</Button>
+											</DialogTrigger>
+											<DialogContent>
+												<DialogHeader>
+													<DialogTitle>Code</DialogTitle>
+												</DialogHeader>
+												<DialogDescription>
+													<Textarea
+														className="w-full h-[300px] resize-none"
+														value={generation.generated_code}
+														readOnly
+													/>
+												</DialogDescription>
+											</DialogContent>
+										</Dialog>
+									)}
 								</h3>
 								{hasVoted && modelRatings.data?.[generation.model_name] && (
 									<p className="text-sm text-gray-600">
