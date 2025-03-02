@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { DEFAULT_CODE_PROMPT, HOUSE_EXAMPLE, PYRAMID_EXAMPLE, CASTLE_EXAMPLE } from "@/constants/codeExamples";
 import SceneRenderer from "@/components/SceneRenderer";
 import { useNavigate } from "react-router-dom";
-
 const Playground = () => {
   const [code, setCode] = useState(DEFAULT_CODE_PROMPT);
   const navigate = useNavigate();
@@ -14,19 +13,13 @@ const Playground = () => {
   const clearBlocks = () => {
     setCode("");
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
+  return <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
       <header className="bg-black text-white p-4 shadow-md z-10 flex items-center justify-between">
         <h1 className="text-2xl font-bold">McLovin ❤️</h1>
         <div className="flex items-center gap-4">
           <p className="text-sm text-gray-300 hidden md:block">Build your blocky world with code</p>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="bg-transparent text-white border-white hover:bg-white/10" 
-              onClick={() => navigate("/")}
-            >
+            <Button variant="outline" className="bg-transparent text-white border-white hover:bg-white/10" onClick={() => navigate("/")}>
               Compare Models
             </Button>
           </div>
@@ -73,14 +66,14 @@ const Playground = () => {
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5">
             <h2 className="text-xl font-bold mb-3 text-gray-800">Example Code</h2>
             <div className="space-y-3">
-              <pre className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono" onClick={() => setCode(HOUSE_EXAMPLE)}>{`
+              <pre onClick={() => setCode(HOUSE_EXAMPLE)} className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono px-0 py-0">{`
                 // Create a small house
                 fill(0, 0, 0, 6, 0, 6, 'stone');
                 fill(0, 1, 0, 6, 3, 0, 'wood');
                 // ... more code
               `}</pre>
               
-              <pre className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono" onClick={() => setCode(PYRAMID_EXAMPLE)}>{`
+              <pre onClick={() => setCode(PYRAMID_EXAMPLE)} className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono px-0 py-0">{`
                 // Create a pyramid
                 const size = 10;
                 for (let y = 0; y < size; y++) {
@@ -89,7 +82,7 @@ const Playground = () => {
                 }
               `}</pre>
               
-              <pre className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono" onClick={() => setCode(CASTLE_EXAMPLE)}>{`
+              <pre onClick={() => setCode(CASTLE_EXAMPLE)} className="bg-gray-50 p-3 rounded-md text-xs cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm font-mono px-0 py-0 ml-0">{`
                 // Create a castle with new blocks
                 fill(-5, 0, -5, 5, 0, 5, 'cobblestone');
                 // ... castle walls, towers, and more
@@ -109,8 +102,6 @@ const Playground = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Playground;
