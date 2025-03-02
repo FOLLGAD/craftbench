@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -98,6 +99,8 @@ serve(async (req) => {
 Use ONLY vanilla JavaScript. Do not use any external libraries, frameworks, or dependencies. The only functions available to you are:
 1. setBlock(x, y, z, material) - sets a single block
 2. fill(x1, y1, z1, x2, y2, z2, material) - fills a rectangular area
+
+IMPORTANT: Stay within the coordinate range of -20 to 20 for all x, y, and z values. Do not place blocks outside this range.
 
 Your materials are:
 ${AVAILABLE_MATERIALS.join(", ")}
