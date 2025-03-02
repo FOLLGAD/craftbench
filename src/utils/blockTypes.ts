@@ -1,4 +1,3 @@
-
 import * as THREE from "three";
 
 export type NormalMapPattern = "noise" | "grid" | "smooth" | "rough" | "bumpy";
@@ -225,6 +224,39 @@ export const blockTypes = [
 		normalScale: new THREE.Vector2(0.5, 0.5),
 		normalMapPattern: "noise" as NormalMapPattern,
 		normalMapIntensity: 0.5,
+	},
+	{
+		name: "fence",
+		color: 0x8B4513, // Brown wooden fence color
+		roughness: 0.9,
+		metalness: 0.0,
+		normalScale: new THREE.Vector2(0.8, 0.8),
+		normalMapPattern: "grid" as NormalMapPattern,
+		normalMapIntensity: 0.8,
+		
+		// Add additional properties to identify it as a fence for special rendering
+		isFence: true,
+		postWidth: 0.25, // Width of the fence post
+		railHeight1: 0.3, // Height of first rail from bottom
+		railHeight2: 0.7, // Height of second rail from bottom
+		railWidth: 0.15, // Width of the fence rails
+	},
+	{
+		name: "iron_fence",
+		color: 0xCCCCCC, // Iron color
+		roughness: 0.6,
+		metalness: 0.7,
+		normalScale: new THREE.Vector2(0.6, 0.6),
+		normalMapPattern: "grid" as NormalMapPattern,
+		normalMapIntensity: 0.6,
+		
+		// Add additional properties to identify it as a fence for special rendering
+		isFence: true,
+		postWidth: 0.2, // Thinner posts for iron fence
+		railHeight1: 0.25, // Height of first rail from bottom
+		railHeight2: 0.5, // Height of second rail from bottom
+		railHeight3: 0.75, // Height of third rail from bottom
+		railWidth: 0.1, // Width of the fence rails
 	},
 	{
 		name: "white_wool",

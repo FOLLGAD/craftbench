@@ -27,6 +27,26 @@ export class MaterialManager {
 		);
 	}
 
+	// Method to check if a block type is a fence
+	public isFenceType(blockType: string): boolean {
+		const blockInfo = blockTypes.find(block => block.name === blockType.toLowerCase());
+		return blockInfo ? !!blockInfo.isFence : false;
+	}
+
+	// Method to get fence properties for a block type
+	public getFenceProperties(blockType: string): any {
+		const blockInfo = blockTypes.find(block => block.name === blockType.toLowerCase());
+		if (!blockInfo || !blockInfo.isFence) return null;
+		
+		return {
+			postWidth: blockInfo.postWidth || 0.25,
+			railHeight1: blockInfo.railHeight1 || 0.3,
+			railHeight2: blockInfo.railHeight2 || 0.7,
+			railHeight3: blockInfo.railHeight3,
+			railWidth: blockInfo.railWidth || 0.15,
+		};
+	}
+
 	public initialize(): void {
 		if (this.initialized) return;
 

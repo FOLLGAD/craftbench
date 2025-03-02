@@ -1,3 +1,4 @@
+
 import SceneRenderer from "@/components/SceneRenderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +36,15 @@ const MATERIALS = {
 	ice: "#ADD8E6",
 	clay: "#B2B2B2",
 	wool: "#F5F5F5",
+	fence: "#8b4513",
+	iron_fence: "#CCCCCC",
+	white_wool: "#F5F5F5",
+	red_wool: "#ff0000",
+	blue_wool: "#0000aa",
+	green_wool: "#00aa00",
+	yellow_wool: "#ffff00",
+	purple_wool: "#800080",
+	orange_wool: "#ffa500",
 	air: "transparent",
 };
 

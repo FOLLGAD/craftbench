@@ -199,6 +199,11 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 	// Helper function to create a block mesh
 	const createBlockMesh = useCallback(
 		(x: number, y: number, z: number, blockType: string): THREE.Mesh => {
+			// Handle fence blocks specially
+			if (materialManager.isFenceType(blockType)) {
+				return createFenceMesh(x, y, z, blockType);
+			}
+			
 			const geometry = new THREE.BoxGeometry(1, 1, 1);
 			const material = materialManager.getMaterial(blockType.toLowerCase());
 			const mesh = new THREE.Mesh(geometry, material);
@@ -209,6 +214,88 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		},
 		[],
 	);
+	
+	// Helper function to create a fence mesh
+	const createFenceMesh = useCallback((x: number, y: number, z: number, blockType: string): THREE.Mesh => {
+		const material = materialManager.getMaterial(blockType.toLowerCase());
+		const fenceProps = materialManager.getFenceProperties(blockType);
+		
+		if (!fenceProps) {
+			// Fallback to regular block if fence properties not found
+			const geometry = new THREE.BoxGeometry(1, 1, 1);
+			const mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(x, y, z);
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
+			return mesh;
+		}
+		
+		// Create fence post (vertical center post)
+		const postWidth = fenceProps.postWidth;
+		const postGeometry = new THREE.BoxGeometry(postWidth, 1, postWidth);
+		postGeometry.translate(0, 0, 0); // Center post in block
+		
+		// Create horizontal rails
+		const railWidth = fenceProps.railWidth;
+		const railGeometries = [];
+		
+		// First rail
+		if (fenceProps.railHeight1 !== undefined) {
+			const rail1Geometry = new THREE.BoxGeometry(1, railWidth, railWidth);
+			rail1Geometry.translate(0, fenceProps.railHeight1 - 0.5, 0); // Position rail at specified height
+			railGeometries.push(rail1Geometry);
+		}
+		
+		// Second rail
+		if (fenceProps.railHeight2 !== undefined) {
+			const rail2Geometry = new THREE.BoxGeometry(1, railWidth, railWidth);
+			rail2Geometry.translate(0, fenceProps.railHeight2 - 0.5, 0); // Position rail at specified height
+			railGeometries.push(rail2Geometry);
+		}
+		
+		// Third rail (optional)
+		if (fenceProps.railHeight3 !== undefined) {
+			const rail3Geometry = new THREE.BoxGeometry(1, railWidth, railWidth);
+			rail3Geometry.translate(0, fenceProps.railHeight3 - 0.5, 0); // Position rail at specified height
+			railGeometries.push(rail3Geometry);
+		}
+		
+		// Create Z-axis rails
+		const zRailGeometries = [];
+		
+		// First Z rail
+		if (fenceProps.railHeight1 !== undefined) {
+			const zRail1Geometry = new THREE.BoxGeometry(railWidth, railWidth, 1);
+			zRail1Geometry.translate(0, fenceProps.railHeight1 - 0.5, 0); // Position rail at specified height
+			zRailGeometries.push(zRail1Geometry);
+		}
+		
+		// Second Z rail
+		if (fenceProps.railHeight2 !== undefined) {
+			const zRail2Geometry = new THREE.BoxGeometry(railWidth, railWidth, 1);
+			zRail2Geometry.translate(0, fenceProps.railHeight2 - 0.5, 0); // Position rail at specified height
+			zRailGeometries.push(zRail2Geometry);
+		}
+		
+		// Third Z rail (optional)
+		if (fenceProps.railHeight3 !== undefined) {
+			const zRail3Geometry = new THREE.BoxGeometry(railWidth, railWidth, 1);
+			zRail3Geometry.translate(0, fenceProps.railHeight3 - 0.5, 0); // Position rail at specified height
+			zRailGeometries.push(zRail3Geometry);
+		}
+		
+		// Combine all geometries
+		const geometriesArray = [postGeometry, ...railGeometries, ...zRailGeometries];
+		const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometriesArray);
+		
+		// Create the mesh
+		const mesh = new THREE.Mesh(mergedGeometry, material);
+		mesh.position.set(x, y, z);
+		mesh.castShadow = true;
+		mesh.receiveShadow = true;
+		
+		return mesh;
+	}, []);
 
 	// Helper function to subtract air blocks from existing geometries
 	const subtractAirBlock = useCallback((x: number, y: number, z: number) => {
