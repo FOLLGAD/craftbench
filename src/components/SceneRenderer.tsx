@@ -2,10 +2,11 @@ import posthog from "posthog-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as THREE from "three";
+import { CSG } from "three-csg-ts";
+import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 // @ts-expect-error dasdas
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { materialManager } from "../utils/materials";
-import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 
 interface SceneRendererProps {
 	code: string;
@@ -18,6 +19,7 @@ interface SceneRef {
 	renderer: THREE.WebGLRenderer;
 	controls: OrbitControls;
 	blocks: Map<string, THREE.Mesh>;
+	geometries: THREE.Mesh[]; // Store all geometries
 	THREE: typeof THREE;
 	animationFrameId?: number; // Added to track animation frame
 }
@@ -68,7 +70,7 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		controls.dampingFactor = 0.05;
 
 		// Lighting
-		const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
 		scene.add(ambientLight);
 
 		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -85,6 +87,7 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			renderer,
 			controls,
 			blocks: new Map(),
+			geometries: [], // Initialize empty geometries array
 			THREE,
 		};
 
@@ -121,7 +124,8 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 
 			// Dispose of all geometries and materials to prevent memory leaks
 			if (sceneRef.current) {
-				const { scene, blocks, renderer, controls } = sceneRef.current;
+				const { scene, blocks, renderer, controls, geometries } =
+					sceneRef.current;
 
 				// Dispose of all blocks (meshes, geometries)
 				for (const mesh of blocks.values()) {
@@ -129,8 +133,15 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 					scene.remove(mesh);
 				}
 
-				// Clear the blocks map
+				// Dispose of all stored geometries
+				for (const mesh of geometries) {
+					if (mesh.geometry) mesh.geometry.dispose();
+					scene.remove(mesh);
+				}
+
+				// Clear the blocks map and geometries array
 				blocks.clear();
+				geometries.length = 0;
 
 				// Clean up all remaining objects from the scene
 				while (scene.children.length > 0) {
@@ -149,43 +160,245 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		};
 	}, []);
 
+	// Helper function to create a block mesh
+	const createBlockMesh = useCallback(
+		(x: number, y: number, z: number, blockType: string): THREE.Mesh => {
+			const geometry = new THREE.BoxGeometry(1, 1, 1);
+			const material = materialManager.getMaterial(blockType.toLowerCase());
+			const mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(x, y, z);
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
+			return mesh;
+		},
+		[],
+	);
+
+	// Helper function to subtract air blocks from existing geometries
+	const subtractAirBlock = useCallback((x: number, y: number, z: number) => {
+		if (!sceneRef.current) return;
+		const { scene, geometries } = sceneRef.current;
+
+		console.log(`Subtracting air block at (${x}, ${y}, ${z})`);
+		console.log(`Current geometries count: ${geometries.length}`);
+
+		// Create air block for subtraction
+		const airGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01); // Slightly larger to ensure complete subtraction
+		const airMesh = new THREE.Mesh(airGeometry);
+		airMesh.position.set(x, y, z);
+
+		// Process each existing geometry and subtract the air block
+		const updatedGeometries: THREE.Mesh[] = [];
+		let subtractionsPerformed = 0;
+
+		for (let i = 0; i < geometries.length; i++) {
+			const existingMesh = geometries[i];
+
+			// Check if the mesh has a valid geometry
+			if (!existingMesh.geometry) {
+				updatedGeometries.push(existingMesh);
+				continue;
+			}
+
+			// Calculate bounding box for the existing mesh if not already calculated
+			if (!existingMesh.geometry.boundingBox) {
+				existingMesh.geometry.computeBoundingBox();
+			}
+
+			// Skip if the mesh is too far away (optimization)
+			// Use bounding box intersection check for more accurate detection
+			const meshBoundingBox = existingMesh.geometry.boundingBox;
+			const airBoundingBox = new THREE.Box3().setFromObject(airMesh);
+			
+			if (meshBoundingBox && !meshBoundingBox.intersectsBox(airBoundingBox)) {
+				updatedGeometries.push(existingMesh);
+				continue;
+			}
+
+			try {
+				// Perform CSG subtraction
+				console.log(`Attempting to subtract from mesh at position (${existingMesh.position.x}, ${existingMesh.position.y}, ${existingMesh.position.z})`);
+				
+				// Clone the meshes to avoid modifying the originals during CSG operations
+				const meshForCSG = existingMesh.clone();
+				const airMeshForCSG = airMesh.clone();
+				
+				const csgResult = CSG.subtract(meshForCSG, airMeshForCSG);
+
+				// If the result is valid, replace the old mesh with the new one
+				if (csgResult?.geometry) {
+					// Preserve the material from the original mesh
+					csgResult.material = existingMesh.material;
+					csgResult.castShadow = true;
+					csgResult.receiveShadow = true;
+
+					// Remove the old mesh from the scene
+					scene.remove(existingMesh);
+
+					// Add the new mesh to the scene and updated geometries
+					scene.add(csgResult);
+					updatedGeometries.push(csgResult);
+					subtractionsPerformed++;
+					
+					console.log("CSG subtraction successful");
+				} else {
+					// If subtraction failed, keep the original
+					console.warn("CSG subtraction returned null or invalid geometry");
+					updatedGeometries.push(existingMesh);
+				}
+			} catch (error) {
+				// If an error occurs during CSG, keep the original
+				console.error("CSG subtraction error:", error);
+				updatedGeometries.push(existingMesh);
+			}
+		}
+
+		console.log(`Performed ${subtractionsPerformed} successful subtractions`);
+
+		// Update the geometries array
+		sceneRef.current.geometries = updatedGeometries;
+
+		// Dispose of the temporary air mesh
+		airGeometry.dispose();
+	}, []);
+
 	// Handler for setBlock commands from worker
 	const handleSetBlock = useCallback(
 		(x: number, y: number, z: number, blockType: string) => {
 			if (!sceneRef.current) return;
 
-			const { scene, blocks } = sceneRef.current;
-			const key = `${x},${y},${z}`;
+			const { scene, geometries } = sceneRef.current;
 
-			// Skip if blockType is 'air'
+			// Handle air blocks by subtracting from existing geometries
 			if (blockType.toLowerCase() === "air") {
-				// Remove existing block if there is one
-				if (blocks.has(key)) {
-					scene.remove(blocks.get(key));
-					blocks.delete(key);
-				}
+				subtractAirBlock(x, y, z);
 				return;
 			}
 
-			// Remove existing block at this position
-			if (blocks.has(key)) {
-				scene.remove(blocks.get(key));
+			// Create new block
+			const mesh = createBlockMesh(x, y, z, blockType);
+
+			// Add to scene and store in geometries array
+			scene.add(mesh);
+			geometries.push(mesh);
+		},
+		[createBlockMesh, subtractAirBlock],
+	);
+
+	// Helper function to subtract air region from existing geometries
+	const subtractAirRegion = useCallback(
+		(
+			x1: number,
+			y1: number,
+			z1: number,
+			x2: number,
+			y2: number,
+			z2: number,
+		) => {
+			if (!sceneRef.current) return;
+
+			console.log(`Subtracting air region from (${x1}, ${y1}, ${z1}) to (${x2}, ${y2}, ${z2})`);
+			console.log(`Current geometries count: ${sceneRef.current.geometries.length}`);
+
+			// Ensure x1,y1,z1 is the minimum corner and x2,y2,z2 is the maximum
+			const minX = Math.min(x1, x2);
+			const minY = Math.min(y1, y2);
+			const minZ = Math.min(z1, z2);
+			const maxX = Math.max(x1, x2);
+			const maxY = Math.max(y1, y2);
+			const maxZ = Math.max(z1, z2);
+
+			// Create a single air box for the entire region
+			const width = maxX - minX + 1.01;
+			const height = maxY - minY + 1.01;
+			const depth = maxZ - minZ + 1.01;
+
+			const airGeometry = new THREE.BoxGeometry(width, height, depth);
+			const airMesh = new THREE.Mesh(airGeometry);
+
+			// Position the air box at the center of the region
+			airMesh.position.set(
+				minX + width / 2 - 0.5,
+				minY + height / 2 - 0.5,
+				minZ + depth / 2 - 0.5,
+			);
+
+			const { scene, geometries } = sceneRef.current;
+			const updatedGeometries: THREE.Mesh[] = [];
+			let subtractionsPerformed = 0;
+
+			// Create a bounding box for the air region
+			const airBoundingBox = new THREE.Box3().setFromObject(airMesh);
+
+			// Process each existing geometry and subtract the air region
+			for (let i = 0; i < geometries.length; i++) {
+				const existingMesh = geometries[i];
+
+				// Check if the mesh has a valid geometry
+				if (!existingMesh.geometry) {
+					updatedGeometries.push(existingMesh);
+					continue;
+				}
+
+				// Calculate bounding box for the existing mesh if not already calculated
+				if (!existingMesh.geometry.boundingBox) {
+					existingMesh.geometry.computeBoundingBox();
+				}
+
+				// Skip if the mesh is too far away (optimization)
+				// Use bounding box intersection check for more accurate detection
+				const meshBoundingBox = existingMesh.geometry.boundingBox;
+				
+				if (meshBoundingBox && !meshBoundingBox.intersectsBox(airBoundingBox)) {
+					updatedGeometries.push(existingMesh);
+					continue;
+				}
+
+				try {
+					// Perform CSG subtraction
+					console.log(`Attempting to subtract region from mesh at position (${existingMesh.position.x}, ${existingMesh.position.y}, ${existingMesh.position.z})`);
+					
+					// Clone the meshes to avoid modifying the originals during CSG operations
+					const meshForCSG = existingMesh.clone();
+					const airMeshForCSG = airMesh.clone();
+					
+					const csgResult = CSG.subtract(meshForCSG, airMeshForCSG);
+
+					// If the result is valid, replace the old mesh with the new one
+					if (csgResult?.geometry) {
+						// Preserve the material from the original mesh
+						csgResult.material = existingMesh.material;
+						csgResult.castShadow = true;
+						csgResult.receiveShadow = true;
+
+						// Remove the old mesh from the scene
+						scene.remove(existingMesh);
+
+						// Add the new mesh to the scene and updated geometries
+						scene.add(csgResult);
+						updatedGeometries.push(csgResult);
+						subtractionsPerformed++;
+						
+						console.log("CSG region subtraction successful");
+					} else {
+						// If subtraction failed, keep the original
+						console.warn("CSG region subtraction returned null or invalid geometry");
+						updatedGeometries.push(existingMesh);
+					}
+				} catch (error) {
+					// If an error occurs during CSG, keep the original
+					console.error("CSG region subtraction error:", error);
+					updatedGeometries.push(existingMesh);
+				}
 			}
 
-			// Create new block
-			const geometry = new THREE.BoxGeometry(1, 1, 1);
+			console.log(`Performed ${subtractionsPerformed} successful region subtractions`);
 
-			// Get the material from the material manager
-			const material = materialManager.getMaterial(blockType.toLowerCase());
+			// Update the geometries array
+			sceneRef.current.geometries = updatedGeometries;
 
-			const mesh = new THREE.Mesh(geometry, material);
-			mesh.position.set(x, y, z);
-			mesh.castShadow = true;
-			mesh.receiveShadow = true;
-
-			// Add to scene and store reference
-			scene.add(mesh);
-			blocks.set(key, mesh);
+			// Dispose of the temporary air mesh
+			airGeometry.dispose();
 		},
 		[],
 	);
@@ -202,13 +415,19 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		) => {
 			if (!sceneRef.current) return;
 
-			const { scene, blocks } = sceneRef.current;
+			const { scene, geometries } = sceneRef.current;
+
+			// Handle air blocks by subtracting from existing geometries
+			if (blockType.toLowerCase() === "air") {
+				subtractAirRegion(x1, y1, z1, x2, y2, z2);
+				return;
+			}
 
 			// Get the material from the material manager
 			const material = materialManager.getMaterial(blockType.toLowerCase());
 
 			// Create a single geometry for all blocks in the fill region
-			const geometries: THREE.BoxGeometry[] = [];
+			const geometriesArray: THREE.BoxGeometry[] = [];
 
 			// Process blocks in reverse order to ensure later blocks are rendered "on top"
 			// This affects the order in the merged geometry
@@ -222,39 +441,26 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 						geometry.translate(x, y, z);
 
 						// Add to geometries array
-						geometries.push(geometry);
+						geometriesArray.push(geometry);
 					}
 				}
 			}
 
 			// Merge all geometries into one
-			const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+			const mergedGeometry =
+				BufferGeometryUtils.mergeGeometries(geometriesArray);
 
 			// Create a single mesh for all blocks
 			const mesh = new THREE.Mesh(mergedGeometry, material);
 			mesh.castShadow = true;
 			mesh.receiveShadow = true;
 
-			// Add to scene
+			// Add to scene and store in geometries array
 			scene.add(mesh);
+			geometries.push(mesh);
 		},
-		[],
+		[subtractAirRegion],
 	);
-
-	// Clear all blocks from the scene
-	const clearBlocks = useCallback(() => {
-		if (!sceneRef.current) return;
-
-		const { scene, blocks } = sceneRef.current;
-
-		// Remove all block meshes from the scene
-		for (const mesh of blocks.values()) {
-			scene.remove(mesh);
-		}
-
-		// Clear the blocks map
-		blocks.clear();
-	}, []);
 
 	const executeCode = useCallback(() => {
 		if (!sceneRef.current) {
@@ -263,9 +469,6 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		}
 
 		try {
-			// Clear previous blocks
-			clearBlocks();
-
 			// Prepare functions to be called from worker
 			const workerFunctionsSetup = `
         function setBlock(x, y, z, blockType) {
@@ -344,7 +547,7 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 		}
-	}, [clearBlocks, handleSetBlock, handleFill, code, generationId]);
+	}, [handleSetBlock, handleFill, code, generationId]);
 
 	// Execute user code whenever code changes
 	useEffect(() => {

@@ -123,8 +123,8 @@ const VoteComparison = ({
 						key={generation.id}
 						className={`bg-white rounded-lg shadow-lg border p-6 ${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "border-green-500" : "border-gray-200"}`}
 					>
-						<div className="flex justify-between items-center mb-4">
-							<div>
+						<div className="flex justify-between items-center mb-4 w-full">
+							<div className="w-full">
 								<h3 className="text-xl font-bold">
 									{hasVoted
 										? formatModelName(generation.model_name)
@@ -150,24 +150,25 @@ const VoteComparison = ({
 									)}
 								</h3>
 								{hasVoted && modelRatings.data?.[generation.model_name] && (
-									<p className="text-sm text-gray-600">
-										Elo: {modelRatings.data[generation.model_name]}
-									</p>
+									<div className="flex items-center gap-2 justify-between w-full">
+										<p className="text-sm text-gray-600">
+											Elo: {modelRatings.data[generation.model_name]}
+										</p>
+
+										<Badge
+											variant={
+												comparisonVotes.data?.[generation.id] > 0
+													? "default"
+													: "outline"
+											}
+											className="flex-shrink-0"
+										>
+											{getVotePercentage(generation.id)}% (
+											{comparisonVotes.data?.[generation.id] || 0} votes)
+										</Badge>
+									</div>
 								)}
 							</div>
-
-							{hasVoted && (
-								<Badge
-									variant={
-										comparisonVotes.data?.[generation.id] > 0
-											? "default"
-											: "outline"
-									}
-								>
-									{getVotePercentage(generation.id)}% (
-									{comparisonVotes.data?.[generation.id] || 0} votes)
-								</Badge>
-							)}
 						</div>
 
 						<div className="bg-gray-800 rounded-md mb-6 h-[300px] overflow-hidden">
