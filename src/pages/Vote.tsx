@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,26 +37,37 @@ const Vote = () => {
   // Perform anonymous sign-in when the component loads
   useEffect(() => {
     const signInAnonymously = async () => {
+      console.log("--- Authentication Check ---");
       const { data: sessionData } = await supabase.auth.getSession();
       
-      // Only sign in if no active session
       if (!sessionData.session) {
         console.log("No active session, signing in anonymously");
-        const { data, error } = await supabase.auth.signInAnonymously();
-        
-        if (error) {
-          console.error("Anonymous sign-in error:", error.message);
-          toast({
-            title: "Authentication Error",
-            description: "Failed to create anonymous session. Some features may not work.",
-            variant: "destructive",
-          });
-        } else {
-          console.log("Anonymous sign-in successful:", data.user?.id);
+        try {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          
+          if (error) {
+            console.error("Anonymous sign-in error:", error.message);
+            toast({
+              title: "Authentication Error",
+              description: "Failed to create anonymous session. Some features may not work.",
+              variant: "destructive",
+            });
+          } else {
+            console.log("Anonymous sign-in successful. User ID:", data.user?.id);
+            console.log("Session:", data.session);
+          }
+        } catch (e) {
+          console.error("Unexpected error during anonymous sign-in:", e);
         }
       } else {
-        console.log("Using existing session for user:", sessionData.session.user.id);
+        console.log("Using existing session");
+        console.log("Session user ID:", sessionData.session.user.id);
+        console.log("Session expires at:", new Date(sessionData.session.expires_at * 1000).toISOString());
       }
+
+      // Log current user regardless of path
+      const { data: currentUser } = await supabase.auth.getUser();
+      console.log("Current authenticated user ID:", currentUser.user?.id);
     };
 
     signInAnonymously();
@@ -173,45 +183,69 @@ const Vote = () => {
     generationId: string
   ) => {
     try {
-      // Get the current user ID
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
+      console.log("--- Vote Submission Process ---");
       
-      // Validate that we have a user ID before proceeding
+      // Step 1: Get the current user ID
+      const { data: userData } = await supabase.auth.getUser();
+      console.log("Initial user check:", userData);
+      console.log("Initial user ID:", userData.user?.id);
+      
+      let userId = userData.user?.id;
+      
+      // Step 2: Validate that we have a user ID before proceeding
       if (!userId) {
-        console.error("User ID is null, cannot submit vote");
+        console.error("User ID is null, attempting anonymous sign-in");
+        
         // Try to sign in anonymously if we don't have a user ID
-        const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
-        
-        if (signInError) {
-          throw new Error("Failed to create user session: " + signInError.message);
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
+          
+          if (signInError) {
+            console.error("Anonymous sign-in error details:", signInError);
+            throw new Error("Failed to create user session: " + signInError.message);
+          }
+          
+          // Log the newly created user
+          console.log("Sign-in response:", signInData);
+          userId = signInData.user?.id;
+          
+          if (!userId) {
+            throw new Error("Failed to create user ID for voting - user ID still null after sign-in");
+          }
+          
+          console.log("Created new anonymous user for voting:", userId);
+        } catch (e) {
+          console.error("Detailed error during emergency sign-in:", e);
+          throw new Error("Authentication error: " + (e instanceof Error ? e.message : String(e)));
         }
-        
-        // Use the newly created user ID
-        if (!signInData.user?.id) {
-          throw new Error("Failed to create user ID for voting");
-        }
-        
-        console.log("Created new anonymous user for voting:", signInData.user.id);
       }
       
-      // Get the latest user ID (either existing or newly created)
-      const { data: latestUserData } = await supabase.auth.getUser();
+      // Step 3: Get the latest user ID to be absolutely sure we have it
+      const { data: latestUserData, error: latestUserError } = await supabase.auth.getUser();
+      
+      if (latestUserError) {
+        console.error("Error getting latest user:", latestUserError);
+        throw new Error("Failed to verify user: " + latestUserError.message);
+      }
+      
+      console.log("Latest user data:", latestUserData);
       const latestUserId = latestUserData.user?.id;
       
       if (!latestUserId) {
+        console.error("Latest user ID is still null after all attempts");
         throw new Error("Unable to get valid user ID for voting");
       }
       
-      console.log("Voting with user ID:", latestUserId);
+      console.log("Final confirmed user ID for voting:", latestUserId);
       console.log("Comparison ID:", comparisonId);
       console.log("Generation ID:", generationId);
       
-      // Log the current session to debug authentication issues
+      // Step 4: Log the current session for debugging
       const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Current session:", sessionData);
+      console.log("Current session before voting:", sessionData);
       
-      // Insert the vote with the validated user ID
+      // Step 5: Insert the vote with the validated user ID
+      console.log("Inserting vote with user ID:", latestUserId);
       const { data: voteData, error } = await supabase.from("mc-votes").insert({
         comparison_id: comparisonId,
         generation_id: generationId,
@@ -220,7 +254,7 @@ const Vote = () => {
       }).select();
 
       if (error) {
-        console.error("Vote insert error:", error);
+        console.error("Vote insert error details:", error);
         throw error;
       }
       
@@ -238,6 +272,14 @@ const Vote = () => {
       });
     } catch (error: any) {
       console.error("Vote error details:", error);
+      
+      // Log any specific database error information
+      if (error.code && error.details) {
+        console.error(`Database error code: ${error.code}`);
+        console.error(`Error details: ${error.details}`);
+        console.error(`Error hint: ${error.hint}`);
+      }
+      
       toast({
         title: "Error",
         description: `Failed to record vote: ${error.message}`,
