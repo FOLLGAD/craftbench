@@ -7,15 +7,15 @@ const Header = () => {
   
   return (
     <header className="bg-black text-white p-4 shadow-md z-10 flex items-center justify-between">
-      <h1 className="text-2xl font-bold">Voxel Sculptor</h1>
+      <h1 className="text-2xl font-bold">McLovin ❤️</h1>
       <div className="flex items-center gap-4">
-        <p className="text-sm text-gray-300 hidden md:block">Build your blocky world with AI</p>
+        <p className="text-sm text-gray-300 hidden md:block">Compare AI voxel generators</p>
         <Button 
           variant="outline" 
           className="bg-transparent text-white border-white hover:bg-white/10"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/playground")}
         >
-          Back to Editor
+          Voxel Playground
         </Button>
       </div>
     </header>

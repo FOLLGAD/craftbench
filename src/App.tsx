@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import Generate from "./pages/Generate";
+import Playground from "./pages/Playground";
 import Compare from "./pages/Compare";
 import NotFound from "./pages/NotFound";
 
@@ -18,9 +18,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/generate" element={<Generate />} />
-          <Route path="/compare" element={<Compare />} />
+          <Route path="/" element={<Compare />} />
+          <Route path="/playground" element={<Playground />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
