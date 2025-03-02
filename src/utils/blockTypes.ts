@@ -1,3 +1,4 @@
+
 import * as THREE from "three";
 
 export type NormalMapPattern = "noise" | "grid" | "smooth" | "rough" | "bumpy";
@@ -218,6 +219,15 @@ export const blockTypes = [
 	},
 	{
 		name: "wool",
+		color: 0xf5f5f5,
+		roughness: 0.95,
+		metalness: 0.0,
+		normalScale: new THREE.Vector2(0.5, 0.5),
+		normalMapPattern: "noise" as NormalMapPattern,
+		normalMapIntensity: 0.5,
+	},
+	{
+		name: "white_wool",
 		color: 0xf5f5f5,
 		roughness: 0.95,
 		metalness: 0.0,
