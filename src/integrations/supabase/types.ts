@@ -201,6 +201,13 @@ export type Database = {
             referencedRelation: "mc-comparisons"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mc-votes_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "mc-generations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       message: {

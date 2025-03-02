@@ -1,5 +1,7 @@
 
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 import GenerationCard from "./GenerationCard";
 
 interface Generation {
@@ -36,9 +38,16 @@ const ResultsSection = ({
     <>
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-2xl font-bold text-gray-800">Comparison Results</h2>
-        <Button variant="outline" className="text-sm" onClick={onReset}>
-          New Comparison
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/vote">
+              <ExternalLink className="mr-2 h-4 w-4" /> View All Comparisons
+            </Link>
+          </Button>
+          <Button variant="outline" className="text-sm" onClick={onReset}>
+            New Comparison
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {[0, 1].map((index) => (
