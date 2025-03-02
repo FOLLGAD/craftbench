@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,55 +48,69 @@ const Vote = () => {
       if (comparisonsError) throw new Error(comparisonsError.message);
       if (!comparisons || comparisons.length === 0) return [];
 
-      // For each comparison, get the generations and vote counts
-      const comparisonData = await Promise.all(
-        comparisons.map(async (comparison) => {
-          // Get both generations
-          const { data: genA } = await supabase
-            .from("mc-generations")
-            .select("*")
-            .eq("id", comparison.generation_a_id)
-            .single();
+      // Collect all generation IDs to fetch in a single query
+      const generationIds = comparisons.flatMap(comparison => [
+        comparison.generation_a_id, 
+        comparison.generation_b_id
+      ]);
 
-          const { data: genB } = await supabase
-            .from("mc-generations")
-            .select("*")
-            .eq("id", comparison.generation_b_id)
-            .single();
+      // Fetch all generations in a single query
+      const { data: allGenerations, error: generationsError } = await supabase
+        .from("mc-generations")
+        .select("*")
+        .in("id", generationIds);
 
-          // Get votes for this comparison
-          const { data: votes } = await supabase
-            .from("mc-votes")
-            .select("generation_id, count")
-            .eq("comparison_id", comparison.id)
-            .select();
-
-          // Check if user has voted on this comparison
-          const { data: userVotes } = await supabase
-            .from("mc-votes")
-            .select("id")
-            .eq("comparison_id", comparison.id)
-            .eq("user_id", await supabase.auth.getUser().then(res => res.data.user?.id));
-          
-          // Count votes per generation
-          const voteCounts: { [key: string]: number } = {};
-          votes?.forEach((vote) => {
-            const genId = vote.generation_id;
-            if (!voteCounts[genId]) voteCounts[genId] = 0;
-            voteCounts[genId] += 1;
-          });
-
-          return {
-            id: comparison.id,
-            generation_a_id: comparison.generation_a_id,
-            generation_b_id: comparison.generation_b_id,
-            prompt: comparison.prompt,
-            generations: [genA, genB].filter(Boolean),
-            voted: userVotes && userVotes.length > 0,
-            votes: voteCounts
-          };
-        })
+      if (generationsError) throw new Error(generationsError.message);
+      
+      // Create a map of generation ids to generation objects for quick lookup
+      const generationsMap = Object.fromEntries(
+        (allGenerations || []).map(gen => [gen.id, gen])
       );
+
+      // Get user ID for checking votes
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+
+      // Get all votes in a single query
+      const { data: allVotes, error: votesError } = await supabase
+        .from("mc-votes")
+        .select("comparison_id, generation_id, count, user_id");
+
+      if (votesError) throw new Error(votesError.message);
+
+      // Process each comparison with its generations and votes
+      const comparisonData = comparisons.map(comparison => {
+        // Get both generations from the map
+        const genA = generationsMap[comparison.generation_a_id];
+        const genB = generationsMap[comparison.generation_b_id];
+        
+        // Filter votes for this comparison
+        const comparisonVotes = (allVotes || []).filter(
+          vote => vote.comparison_id === comparison.id
+        );
+
+        // Check if user has voted on this comparison
+        const hasVoted = userId && comparisonVotes.some(
+          vote => vote.user_id === userId
+        );
+
+        // Count votes per generation
+        const voteCounts: { [key: string]: number } = {};
+        comparisonVotes.forEach(vote => {
+          const genId = vote.generation_id;
+          if (!voteCounts[genId]) voteCounts[genId] = 0;
+          voteCounts[genId] += 1;
+        });
+
+        return {
+          id: comparison.id,
+          generation_a_id: comparison.generation_a_id,
+          generation_b_id: comparison.generation_b_id,
+          prompt: comparison.prompt,
+          generations: [genA, genB].filter(Boolean),
+          voted: !!hasVoted,
+          votes: voteCounts
+        };
+      });
 
       return comparisonData.filter(comp => comp.generations.length === 2);
     },
