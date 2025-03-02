@@ -1,12 +1,11 @@
 
 import { ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
     <footer className="border-t border-gray-200 bg-white py-6 mt-12">
       <div className="container mx-auto flex justify-center items-center px-4">
-        <p className="text-sm text-gray-500 flex items-center gap-1">
+        <p className="text-base md:text-lg text-gray-600 flex items-center gap-1">
           Benchcraft by{" "}
           <a 
             href="https://x.com/emilahlback" 
@@ -15,7 +14,7 @@ const Footer = () => {
             className="text-blue-500 hover:text-blue-600 transition-colors inline-flex items-center gap-0.5"
           >
             @emilahlback
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-4 w-4" />
           </a>{" "}
           @{" "}
           <a 

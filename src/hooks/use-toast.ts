@@ -1,15 +1,6 @@
 
-import {
-  useToast as useToastOriginal,
-  type ToastActionElement,
-} from "@/components/ui/toast"
+import { toast } from "sonner";
 
-export const useToast = useToastOriginal
-
-export type Toast = {
-  id: string
-  title?: React.ReactNode
-  description?: React.ReactNode
-  action?: ToastActionElement
-  open: boolean
-}
+export const useToast = () => {
+  return toast;
+};
