@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,9 +119,11 @@ const Vote = () => {
     generationId: string
   ) => {
     try {
+      // Add the vote value (1) to fix the not-null constraint
       const { error } = await supabase.from("mc-votes").insert({
         comparison_id: comparisonId,
         generation_id: generationId,
+        vote: 1  // Adding the required vote value
       });
 
       if (error) throw error;
@@ -161,8 +162,12 @@ const Vote = () => {
     navigate("/");
   };
 
+  const handleResetError = () => {
+    refetch();
+  };
+
   if (isLoading) return <LoadingState />;
-  if (error) return <ErrorState error={(error as Error).message} />;
+  if (error) return <ErrorState error={(error as Error).message} onReset={handleResetError} />;
   if (!data || data.length === 0) {
     return (
       <div className="container mx-auto py-8">
