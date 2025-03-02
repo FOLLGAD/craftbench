@@ -23,7 +23,7 @@ const App = () => (
 				<BrowserRouter>
 					<Routes>
 						<Route path="/" element={<Home />} />
-						<Route path="/compare/:comparisonId" element={<Compare />} />
+						<Route path="/compare" element={<Compare />} />
 						<Route path="/playground" element={<Playground />} />
 						<Route path="/vote" element={<Vote />} />
 						{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

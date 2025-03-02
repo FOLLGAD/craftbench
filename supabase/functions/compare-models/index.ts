@@ -15,6 +15,7 @@ const AVAILABLE_MATERIALS = [
 	"water",
 	"lava",
 	"sand",
+	"sandstone",
 	"gravel",
 	"gold",
 	"iron",
@@ -29,6 +30,12 @@ const AVAILABLE_MATERIALS = [
 	"clay",
 	"wool",
 	"air",
+	"orange_wool",
+	"purple_wool",
+	"yellow_wool",
+	"green_wool",
+	"blue_wool",
+	"red_wool",
 ];
 
 // System prompt for the models
@@ -59,13 +66,15 @@ function extractCodeFromResponse(content: string): string {
 	const codeFenceRegex = /```(?:javascript|js)?\s*\n([\s\S]*?)```/;
 	const match = content.match(codeFenceRegex);
 
-	if (match && match[1]) {
-		console.log("Code fences detected, extracting code");
+	console.log("code pre-extract", content);
+
+	if (match?.[1]) {
+		console.log("Code fences detected, extracting code", match[1].trim());
 		return match[1].trim();
 	}
 
 	// If no code fences or they're empty, return the original content
-	return content;
+	return content.replaceAll("```", "").trim();
 }
 
 // Function to create Supabase client

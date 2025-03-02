@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { blockTypes } from "./blockTypes";
+import type { NormalMapPattern } from "./blockTypes";
 
 export class MaterialManager {
 	private static instance: MaterialManager;
@@ -62,64 +63,16 @@ export class MaterialManager {
 
 	private generateNormalMaps(): void {
 		// Generate normal maps for each block type
-		this.normalMaps.set(
-			"grass",
-			this.generateNormalMap(0x3bca2b, "bumpy", 0.7),
-		);
-		this.normalMaps.set(
-			"stone",
-			this.generateNormalMap(0x969696, "rough", 0.9),
-		);
-		this.normalMaps.set("dirt", this.generateNormalMap(0x8b4513, "noise", 0.8));
-		this.normalMaps.set("wood", this.generateNormalMap(0x8b4513, "grid", 0.6));
-		this.normalMaps.set(
-			"water",
-			this.generateNormalMap(0x1e90ff, "smooth", 0.3),
-		);
-		this.normalMaps.set("sand", this.generateNormalMap(0xffef8f, "noise", 0.5));
-		this.normalMaps.set(
-			"glass",
-			this.generateNormalMap(0xffffff, "smooth", 0.2),
-		);
-		this.normalMaps.set("gold", this.generateNormalMap(0xffd700, "bumpy", 0.8));
-		this.normalMaps.set(
-			"cobblestone",
-			this.generateNormalMap(0x555555, "rough", 1.0),
-		);
-		this.normalMaps.set("brick", this.generateNormalMap(0xb22222, "grid", 0.8));
-		this.normalMaps.set(
-			"leaves",
-			this.generateNormalMap(0x2d8c24, "bumpy", 0.6),
-		);
-		this.normalMaps.set(
-			"bedrock",
-			this.generateNormalMap(0x221f26, "rough", 1.0),
-		);
-		this.normalMaps.set(
-			"lava",
-			this.generateNormalMap(0xff4500, "smooth", 0.9),
-		);
-		this.normalMaps.set(
-			"gravel",
-			this.generateNormalMap(0x777777, "rough", 0.8),
-		);
-		this.normalMaps.set("iron", this.generateNormalMap(0xcccccc, "bumpy", 0.7));
-		this.normalMaps.set(
-			"diamond",
-			this.generateNormalMap(0x00ffff, "bumpy", 0.9),
-		);
-		this.normalMaps.set(
-			"emerald",
-			this.generateNormalMap(0x50c878, "bumpy", 0.8),
-		);
-		this.normalMaps.set(
-			"obsidian",
-			this.generateNormalMap(0x1a1a1a, "rough", 0.9),
-		);
-		this.normalMaps.set("snow", this.generateNormalMap(0xffffff, "noise", 0.4));
-		this.normalMaps.set("ice", this.generateNormalMap(0xadd8e6, "smooth", 0.2));
-		this.normalMaps.set("clay", this.generateNormalMap(0xb2b2b2, "noise", 0.6));
-		this.normalMaps.set("wool", this.generateNormalMap(0xf5f5f5, "noise", 0.5));
+		for (const blockType of blockTypes) {
+			this.normalMaps.set(
+				blockType.name,
+				this.generateNormalMap(
+					blockType.color,
+					blockType.normalMapPattern,
+					blockType.normalMapIntensity,
+				),
+			);
+		}
 	}
 
 	private createMaterials(): void {
@@ -145,7 +98,6 @@ export class MaterialManager {
 						normalScale: blockType.normalScale,
 						clearcoat: 0.3,
 						clearcoatRoughness: 0.2,
-						// clipShadows: true,
 					}),
 				);
 			} else if (blockType.name === "lava") {
@@ -205,7 +157,7 @@ export class MaterialManager {
 	// Function to generate normal maps with different characteristics
 	private generateNormalMap(
 		color: number,
-		pattern: "noise" | "grid" | "smooth" | "rough" | "bumpy" = "noise",
+		pattern: NormalMapPattern = "noise",
 		intensity = 0.5,
 	): THREE.CanvasTexture | null {
 		const canvas = document.createElement("canvas");
