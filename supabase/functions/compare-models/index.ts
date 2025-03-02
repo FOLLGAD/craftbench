@@ -93,13 +93,17 @@ serve(async (req) => {
     const modelChoices = Array.from(modelIndexes).map(index => MODEL_OPTIONS[index]);
     console.log(`Using models: ${modelChoices[0]} and ${modelChoices[1]}`);
 
-    // Create the minecraft-specific system prompt with explicit instruction about format
+    // Create the minecraft-specific system prompt with explicit instruction about format and vanilla JS
     const systemPrompt = `You write minecraft voxel scenes. You MUST provide pure Javascript code without code fences, explanations, or any other text - only JavaScript code. If you use code fences or markdown, I will be unable to use your response.
+
+Use ONLY vanilla JavaScript. Do not use any external libraries, frameworks, or dependencies. The only functions available to you are:
+1. setBlock(x, y, z, material) - sets a single block
+2. fill(x1, y1, z1, x2, y2, z2, material) - fills a rectangular area
 
 Your materials are:
 ${AVAILABLE_MATERIALS.join(", ")}
 
-You can be creative, but remember: respond ONLY with plain JavaScript code and nothing else.`;
+You can be creative, but remember: respond ONLY with plain JavaScript code, using ONLY vanilla JS and the two provided functions.`;
 
     // Generate code with both models with no timeout
     const generateCode = async (modelId) => {
