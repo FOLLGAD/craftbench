@@ -73,13 +73,30 @@ const Compare = () => {
       // Create a local comparison object if one doesn't exist in the response
       let comparisonObj = data.comparison;
       if (!comparisonObj) {
+        const comparisonId = generateUUID(); // Generate a UUID for the comparison
+        
+        // Create the comparison object
         comparisonObj = {
-          id: generateUUID(), // Use our UUID generator function
+          id: comparisonId,
           generation_a_id: data.generations[0].id,
           generation_b_id: data.generations[1].id,
           prompt: prompt
         };
+        
         console.log("Created local comparison:", comparisonObj);
+        
+        // Insert the comparison into the database
+        const { error: insertError } = await supabase
+          .from("mc-comparisons")
+          .insert(comparisonObj);
+          
+        if (insertError) {
+          console.error("Error inserting comparison:", insertError);
+          toast.error("Failed to save comparison data");
+          // We'll continue with the local comparison object anyway
+        } else {
+          console.log("Successfully inserted comparison into database");
+        }
       }
       
       setGenerations(data.generations);
