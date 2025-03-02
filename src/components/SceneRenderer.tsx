@@ -25,6 +25,8 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
   // Initialize Three.js scene
   useEffect(() => {
     if (!canvasRef.current) return;
+
+    let handleResize;
     
     // Import Three.js dynamically to avoid SSR issues
     import('three').then(THREE => {
@@ -276,7 +278,7 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
         animate();
         
         // Handle window resize
-        const handleResize = () => {
+        handleResize = () => {
           if (!canvasRef.current) return;
           camera.aspect = window.innerWidth / window.innerHeight;
           camera.updateProjectionMatrix();
@@ -287,78 +289,79 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
 
         setInited(true);
         
-        // Cleanup function for useEffect
-        return () => {
-          window.removeEventListener('resize', handleResize);
-          
-          // Cancel any pending animation frame
-          if (sceneRef.current && sceneRef.current.animationFrameId) {
-            cancelAnimationFrame(sceneRef.current.animationFrameId);
-          }
-          
-          // Dispose of all geometries and materials to prevent memory leaks
-          if (sceneRef.current) {
-            const { scene, blocks, renderer, controls } = sceneRef.current;
-            
-            // Dispose of all blocks (meshes, geometries, materials)
-            blocks.forEach((mesh) => {
-              if (mesh.geometry) mesh.geometry.dispose();
-              
-              // Check if material is an array
-              if (Array.isArray(mesh.material)) {
-                mesh.material.forEach((mat) => mat.dispose());
-              } else if (mesh.material) {
-                // Dispose of textures in material
-                if (mesh.material.map) mesh.material.map.dispose();
-                if (mesh.material.normalMap) mesh.material.normalMap.dispose();
-                if (mesh.material.envMap) mesh.material.envMap.dispose();
-                
-                // Dispose of the material itself
-                mesh.material.dispose();
-              }
-              
-              scene.remove(mesh);
-            });
-            
-            // Clear the blocks map
-            blocks.clear();
-            
-            // Dispose of normal maps
-            if (sceneRef.current.normalMaps) {
-              sceneRef.current.normalMaps.forEach((normalMap) => {
-                if (normalMap) normalMap.dispose();
-              });
-              sceneRef.current.normalMaps.clear();
-            }
-            
-            // Clean up all remaining objects from the scene
-            while(scene.children.length > 0) {
-              const object = scene.children[0];
-              
-              // Dispose of geometries and materials where possible
-              if (object.geometry) object.geometry.dispose();
-              
-              if (object.material) {
-                if (Array.isArray(object.material)) {
-                  object.material.forEach(material => material.dispose());
-                } else {
-                  object.material.dispose();
-                }
-              }
-              
-              scene.remove(object);
-            }
-            
-            // Final renderer and controls disposal
-            renderer.dispose();
-            controls.dispose();
-            
-            // Clear the sceneRef to free memory
-            sceneRef.current = null;
-          }
-        };
       });
     });
+    
+    // Cleanup function for useEffect
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      
+      // Cancel any pending animation frame
+      if (sceneRef.current && sceneRef.current.animationFrameId) {
+        cancelAnimationFrame(sceneRef.current.animationFrameId);
+      }
+      
+      // Dispose of all geometries and materials to prevent memory leaks
+      if (sceneRef.current) {
+        const { scene, blocks, renderer, controls } = sceneRef.current;
+        
+        // Dispose of all blocks (meshes, geometries, materials)
+        blocks.forEach((mesh) => {
+          if (mesh.geometry) mesh.geometry.dispose();
+          
+          // Check if material is an array
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach((mat) => mat.dispose());
+          } else if (mesh.material) {
+            // Dispose of textures in material
+            if (mesh.material.map) mesh.material.map.dispose();
+            if (mesh.material.normalMap) mesh.material.normalMap.dispose();
+            if (mesh.material.envMap) mesh.material.envMap.dispose();
+            
+            // Dispose of the material itself
+            mesh.material.dispose();
+          }
+          
+          scene.remove(mesh);
+        });
+        
+        // Clear the blocks map
+        blocks.clear();
+        
+        // Dispose of normal maps
+        if (sceneRef.current.normalMaps) {
+          sceneRef.current.normalMaps.forEach((normalMap) => {
+            if (normalMap) normalMap.dispose();
+          });
+          sceneRef.current.normalMaps.clear();
+        }
+        
+        // Clean up all remaining objects from the scene
+        while(scene.children.length > 0) {
+          const object = scene.children[0];
+          
+          // Dispose of geometries and materials where possible
+          if (object.geometry) object.geometry.dispose();
+          
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => material.dispose());
+            } else {
+              object.material.dispose();
+            }
+          }
+          
+          scene.remove(object);
+        }
+        
+        // Final renderer and controls disposal
+        renderer.dispose();
+        controls.dispose();
+        
+        // Clear the sceneRef to free memory
+        sceneRef.current = null;
+      }
+    };
   }, [canvasRef.current]);
   
   // Execute user code whenever code changes
