@@ -1,380 +1,216 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import * as THREE from "three";
+// @ts-expect-error dasdas
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { materialManager } from "../utils/materials";
 
 interface SceneRendererProps {
-  code: string;
+	code: string;
 }
 
 interface SceneRef {
-  scene: any;
-  camera: any;
-  renderer: any;
-  controls: any;
-  blocks: Map<string, any>;
-  THREE: any;
-  normalMaps: Map<string, any>;
-  animationFrameId?: number; // Added to track animation frame
+	scene: THREE.Scene;
+	camera: THREE.PerspectiveCamera;
+	renderer: THREE.WebGLRenderer;
+	controls: OrbitControls;
+	blocks: Map<string, THREE.Mesh>;
+	THREE: typeof THREE;
+	animationFrameId?: number; // Added to track animation frame
 }
 
 const SceneRenderer = ({ code }: SceneRendererProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef<SceneRef | null>(null);
-  const [inited, setInited] = useState(false);
-  
-  // Initialize Three.js scene
-  useEffect(() => {
-    if (!canvasRef.current) return;
+	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const sceneRef = useRef<SceneRef | null>(null);
+	const [inited, setInited] = useState(false);
+	console.log(code);
 
-    // Scene setup
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // Sky blue background
-    
-    // Camera
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    camera.position.set(10, 10, 10);
-    camera.lookAt(0, 0, 0);
-    
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      antialias: true
-    });
-    renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    
-    // Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(5, 10, 7.5);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    scene.add(directionalLight);
-    
-    // Grid helper removed from here
-    const normalMaps = new Map();
-    
-    // Function to generate normal maps with different characteristics
-    const generateNormalMap = (color: number, pattern: 'noise' | 'grid' | 'smooth' | 'rough' | 'bumpy' = 'noise', intensity: number = 0.5) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      
-      // Fill with base color
-      ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-      ctx.fillRect(0, 0, 256, 256);
-      
-      // Add pattern based on type
-      switch(pattern) {
-        case 'grid':
-          // Create grid pattern with higher contrast for normal maps
-          const gridSize = 32;
-          ctx.strokeStyle = `rgba(255, 255, 255, ${intensity * 0.9})`;
-          ctx.lineWidth = 3;
-          
-          for (let i = 0; i <= 256; i += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(i, 0);
-            ctx.lineTo(i, 256);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(0, i);
-            ctx.lineTo(256, i);
-            ctx.stroke();
-          }
-          
-          // Add embossed effect for better normal map appearance
-          const imageData = ctx.getImageData(0, 0, 256, 256);
-          const imageDataArray = imageData.data;
-          
-          // Create embossed effect by manipulating neighboring pixels
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = 256;
-          tempCanvas.height = 256;
-          const tempCtx = tempCanvas.getContext('2d');
-          if (tempCtx) {
-            tempCtx.putImageData(imageData, 0, 0);
-            
-            // Apply emboss-like filter
-            ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-            ctx.fillRect(0, 0, 256, 256);
-            
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            ctx.shadowBlur = 2;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
-            ctx.drawImage(tempCanvas, 0, 0);
-            
-            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-            ctx.shadowOffsetX = -2;
-            ctx.shadowOffsetY = -2;
-            ctx.drawImage(tempCanvas, 0, 0);
-          }
-          break;
-          
-        case 'rough':
-          // Create rough texture with jagged lines
-          ctx.strokeStyle = `rgba(0, 0, 0, ${intensity * 0.7})`;
-          ctx.lineWidth = 2;
-          
-          for (let i = 0; i < 20; i++) {
-            ctx.beginPath();
-            let x = 0;
-            let y = Math.random() * 256;
-            ctx.moveTo(x, y);
-            
-            while (x < 256) {
-              x += Math.random() * 20;
-              y += (Math.random() - 0.5) * 40;
-              ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-          }
-          break;
-          
-        case 'bumpy':
-          // Create bumpy texture with circles
-          for (let i = 0; i < 100; i++) {
-            const x = Math.random() * 256;
-            const y = Math.random() * 256;
-            const radius = 5 + Math.random() * 15;
-            const brightness = 50 + Math.random() * 150;
-            
-            const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-            gradient.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, ${intensity})`);
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          break;
-          
-        case 'smooth':
-          // Create smooth gradients
-          for (let i = 0; i < 10; i++) {
-            const x1 = Math.random() * 256;
-            const y1 = Math.random() * 256;
-            const x2 = Math.random() * 256;
-            const y2 = Math.random() * 256;
-            const r = 50 + Math.random() * 206;
-            
-            const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-            gradient.addColorStop(0, `rgba(${r}, ${r}, ${r}, 0)`);
-            gradient.addColorStop(0.5, `rgba(${r}, ${r}, ${r}, ${intensity * 0.5})`);
-            gradient.addColorStop(1, `rgba(${r}, ${r}, ${r}, 0)`);
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 256, 256);
-          }
-          break;
-          
-        case 'noise':
-        default:
-          // Add randomized noise for normal map
-          const pixels = ctx.getImageData(0, 0, 256, 256);
-          const pixelData = pixels.data;
-          
-          for (let i = 0; i < pixelData.length; i += 4) {
-            const noise = Math.random() * intensity * 100;
-            pixelData[i] = Math.min(255, pixelData[i] + noise);     // r
-            pixelData[i+1] = Math.min(255, pixelData[i+1] + noise); // g
-            pixelData[i+2] = Math.min(255, pixelData[i+2] + noise); // b
-          }
-          
-          ctx.putImageData(pixels, 0, 0);
-          
-          // Add some additional dots for texture
-          for (let i = 0; i < 5000; i++) {
-            const x = Math.random() * 256;
-            const y = Math.random() * 256;
-            const radius = 1 + Math.random() * 2;
-            const brightness = Math.random() * 40;
-            
-            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness + 128}, ${intensity * 0.5})`;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          break;
-      }
-      
-      return new THREE.CanvasTexture(canvas);
-    };
-    
-    // Pre-generate normal maps for each block type
-    normalMaps.set('grass', generateNormalMap(0x3bca2b, 'bumpy', 0.7));
-    normalMaps.set('stone', generateNormalMap(0x969696, 'rough', 0.9));
-    normalMaps.set('dirt', generateNormalMap(0x8b4513, 'noise', 0.8));
-    normalMaps.set('wood', generateNormalMap(0x8b4513, 'grid', 0.6));
-    normalMaps.set('water', generateNormalMap(0x1e90ff, 'smooth', 0.3));
-    normalMaps.set('sand', generateNormalMap(0xffef8f, 'noise', 0.5));
-    normalMaps.set('glass', generateNormalMap(0xffffff, 'smooth', 0.2));
-    normalMaps.set('gold', generateNormalMap(0xFFD700, 'bumpy', 0.8));
-    normalMaps.set('cobblestone', generateNormalMap(0x555555, 'rough', 1.0));
-    normalMaps.set('brick', generateNormalMap(0xb22222, 'grid', 0.8));
-    normalMaps.set('leaves', generateNormalMap(0x2d8c24, 'bumpy', 0.6));
-    normalMaps.set('bedrock', generateNormalMap(0x221F26, 'rough', 1.0));
-    
-    // Add normal maps for the remaining materials
-    normalMaps.set('lava', generateNormalMap(0xFF4500, 'smooth', 0.9));
-    normalMaps.set('gravel', generateNormalMap(0x777777, 'rough', 0.8));
-    normalMaps.set('iron', generateNormalMap(0xCCCCCC, 'bumpy', 0.7));
-    normalMaps.set('diamond', generateNormalMap(0x00FFFF, 'bumpy', 0.9));
-    normalMaps.set('emerald', generateNormalMap(0x50C878, 'bumpy', 0.8));
-    normalMaps.set('obsidian', generateNormalMap(0x1A1A1A, 'rough', 0.9));
-    normalMaps.set('snow', generateNormalMap(0xFFFFFF, 'noise', 0.4));
-    normalMaps.set('ice', generateNormalMap(0xADD8E6, 'smooth', 0.2));
-    normalMaps.set('clay', generateNormalMap(0xB2B2B2, 'noise', 0.6));
-    normalMaps.set('wool', generateNormalMap(0xF5F5F5, 'noise', 0.5));
-    
-    // Store scene reference
-    sceneRef.current = { 
-      scene, 
-      camera, 
-      renderer, 
-      controls, 
-      blocks: new Map(), 
-      THREE,
-      normalMaps
-    };
-    
-    // Animation loop
-    const animate = () => {
-      // Store animation frame ID for cleanup
-      const animationFrameId = requestAnimationFrame(animate);
-      sceneRef.current!.animationFrameId = animationFrameId;
-      
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    
-    animate();
-    
-    // Handle window resize
-    const handleResize = () => {
-      if (!canvasRef.current) return;
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-    };
-    
-    window.addEventListener('resize', handleResize);
+	// Initialize Three.js scene
+	useEffect(() => {
+		if (!canvasRef.current) return;
 
-    setInited(true);
-    
-    // Cleanup function for useEffect
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      
-      // Cancel any pending animation frame
-      if (sceneRef.current && sceneRef.current.animationFrameId) {
-        cancelAnimationFrame(sceneRef.current.animationFrameId);
-      }
-      
-      // Dispose of all geometries and materials to prevent memory leaks
-      if (sceneRef.current) {
-        const { scene, blocks, renderer, controls } = sceneRef.current;
-        
-        // Dispose of all blocks (meshes, geometries, materials)
-        blocks.forEach((mesh) => {
-          if (mesh.geometry) mesh.geometry.dispose();
-          
-          // Check if material is an array
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((mat) => mat.dispose());
-          } else if (mesh.material) {
-            // Dispose of textures in material
-            if (mesh.material.map) mesh.material.map.dispose();
-            if (mesh.material.normalMap) mesh.material.normalMap.dispose();
-            if (mesh.material.envMap) mesh.material.envMap.dispose();
-            
-            // Dispose of the material itself
-            mesh.material.dispose();
-          }
-          
-          scene.remove(mesh);
-        });
-        
-        // Clear the blocks map
-        blocks.clear();
-        
-        // Dispose of normal maps
-        if (sceneRef.current.normalMaps) {
-          sceneRef.current.normalMaps.forEach((normalMap) => {
-            if (normalMap) normalMap.dispose();
-          });
-          sceneRef.current.normalMaps.clear();
-        }
-        
-        // Clean up all remaining objects from the scene
-        while(scene.children.length > 0) {
-          const object = scene.children[0];
-          
-          // Dispose of geometries and materials where possible
-          if (object.geometry) object.geometry.dispose();
-          
-          if (object.material) {
-            if (Array.isArray(object.material)) {
-              object.material.forEach(material => material.dispose());
-            } else {
-              object.material.dispose();
-            }
-          }
-          
-          scene.remove(object);
-        }
-        
-        // Final renderer and controls disposal
-        renderer.dispose();
-        controls.dispose();
-        
-        // Clear the sceneRef to free memory
-        sceneRef.current = null;
-      }
-    };
-  }, [canvasRef.current]);
-  
-  // Execute user code whenever code changes
-  useEffect(() => {
-    if (inited && code) {
-      executeCode();
-    }
-  }, [inited, sceneRef.current, code]);
-  
-  const executeCode = () => {
-    if (!sceneRef.current) {
-      toast.error("3D renderer not initialized yet");
-      return;
-    }
-    
-    try {
-      // Clear previous blocks
-      clearBlocks();
-      
-      // Prepare functions to be called from worker
-      const workerFunctionsSetup = `
+		// Initialize material manager
+		materialManager.initialize();
+
+		// Scene setup
+		const scene = new THREE.Scene();
+		scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+
+		// Camera
+		const camera = new THREE.PerspectiveCamera(
+			75,
+			window.innerWidth / window.innerHeight,
+			0.1,
+			1000,
+		);
+		camera.position.set(10, 10, 10);
+		camera.lookAt(0, 0, 0);
+
+		// Renderer
+		const renderer = new THREE.WebGLRenderer({
+			canvas: canvasRef.current,
+			antialias: true,
+		});
+		renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+		// Controls
+		const controls = new OrbitControls(camera, renderer.domElement);
+		controls.enableDamping = true;
+		controls.dampingFactor = 0.05;
+
+		// Lighting
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+		scene.add(ambientLight);
+
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+		directionalLight.position.set(5, 10, 7.5);
+		directionalLight.castShadow = true;
+		directionalLight.shadow.mapSize.width = 1024;
+		directionalLight.shadow.mapSize.height = 1024;
+		scene.add(directionalLight);
+
+		// Store scene reference
+		sceneRef.current = {
+			scene,
+			camera,
+			renderer,
+			controls,
+			blocks: new Map(),
+			THREE,
+		};
+
+		const animate = () => {
+			const animationFrameId = requestAnimationFrame(animate);
+			sceneRef.current.animationFrameId = animationFrameId;
+
+			controls.update();
+			renderer.render(scene, camera);
+		};
+
+		animate();
+
+		// Handle window resize
+		const handleResize = () => {
+			if (!canvasRef.current) return;
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+		};
+
+		window.addEventListener("resize", handleResize);
+
+		setInited(true);
+
+		// Cleanup function for useEffect
+		return () => {
+			window.removeEventListener("resize", handleResize);
+
+			// Cancel any pending animation frame
+			if (sceneRef.current?.animationFrameId) {
+				cancelAnimationFrame(sceneRef.current.animationFrameId);
+			}
+
+			// Dispose of all geometries and materials to prevent memory leaks
+			if (sceneRef.current) {
+				const { scene, blocks, renderer, controls } = sceneRef.current;
+
+				// Dispose of all blocks (meshes, geometries)
+				for (const mesh of blocks.values()) {
+					if (mesh.geometry) mesh.geometry.dispose();
+					scene.remove(mesh);
+				}
+
+				// Clear the blocks map
+				blocks.clear();
+
+				// Clean up all remaining objects from the scene
+				while (scene.children.length > 0) {
+					const object = scene.children[0];
+					object.clear();
+					scene.remove(object);
+				}
+
+				// Final renderer and controls disposal
+				renderer.dispose();
+				controls.dispose();
+
+				// Clear the sceneRef to free memory
+				sceneRef.current = null;
+			}
+		};
+	}, []);
+
+	// Handler for setBlock commands from worker
+	const handleSetBlock = useCallback(
+		(x: number, y: number, z: number, blockType: string) => {
+			if (!sceneRef.current) return;
+
+			const { scene, blocks } = sceneRef.current;
+			const key = `${x},${y},${z}`;
+
+			// Skip if blockType is 'air'
+			if (blockType.toLowerCase() === "air") {
+				// Remove existing block if there is one
+				if (blocks.has(key)) {
+					scene.remove(blocks.get(key));
+					blocks.delete(key);
+				}
+				return;
+			}
+
+			// Remove existing block at this position
+			if (blocks.has(key)) {
+				scene.remove(blocks.get(key));
+			}
+
+			// Create new block
+			const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+			// Get the material from the material manager
+			const material = materialManager.getMaterial(blockType.toLowerCase());
+
+			const mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(x, y, z);
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
+
+			// Add to scene and store reference
+			scene.add(mesh);
+			blocks.set(key, mesh);
+		},
+		[],
+	);
+
+	// Clear all blocks from the scene
+	const clearBlocks = useCallback(() => {
+		if (!sceneRef.current) return;
+
+		const { scene, blocks } = sceneRef.current;
+
+		// Remove all block meshes from the scene
+		for (const mesh of blocks.values()) {
+			scene.remove(mesh);
+		}
+
+		// Clear the blocks map
+		blocks.clear();
+	}, []);
+
+	const executeCode = useCallback(() => {
+		if (!sceneRef.current) {
+			toast.error("3D renderer not initialized yet");
+			return;
+		}
+
+		try {
+			// Clear previous blocks
+			clearBlocks();
+
+			// Prepare functions to be called from worker
+			const workerFunctionsSetup = `
         function setBlock(x, y, z, blockType) {
           self.postMessage({ 
             action: 'setBlock', 
@@ -392,9 +228,9 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
           }
         }
       `;
-      
-      // Create worker with user code
-      const workerCode = `
+
+			// Create worker with user code
+			const workerCode = `
         ${workerFunctionsSetup}
         
         self.onmessage = function() {
@@ -406,290 +242,62 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
           }
         };
       `;
-      
-      const blob = new Blob([workerCode], { type: 'application/javascript' });
-      const workerUrl = URL.createObjectURL(blob);
-      const worker = new Worker(workerUrl);
-      
-      // Set timeout to terminate worker (1 second)
-      const timeoutId = setTimeout(() => {
-        worker.terminate();
-        URL.revokeObjectURL(workerUrl);
-        toast.error("Error: Code execution timed out (max 1 second)");
-        console.error("Error: Code execution timed out");
-      }, 1000);
-      
-      // Listen for messages from worker
-      worker.onmessage = (e) => {
-        const data = e.data;
-        
-        if (data.action === 'setBlock') {
-          const { x, y, z, blockType } = data.params;
-          handleSetBlock(x, y, z, blockType);
-        } 
-        else if (data.action === 'complete') {
-          clearTimeout(timeoutId);
-          worker.terminate();
-          URL.revokeObjectURL(workerUrl);
-          toast.success("Code executed successfully");
-        }
-        else if (data.action === 'error') {
-          clearTimeout(timeoutId);
-          worker.terminate();
-          URL.revokeObjectURL(workerUrl);
-          toast.error(`Error: ${data.message}`);
-          console.error("Error in worker:", data.message);
-        }
-      };
-      
-      // Start the worker
-      worker.postMessage('start');
-      
-    } catch (error) {
-      console.error("Error executing code:", error);
-      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-  
-  // Handler for setBlock commands from worker
-  const handleSetBlock = (x: number, y: number, z: number, blockType: string) => {
-    if (!sceneRef.current) return;
-    
-    const { scene, blocks, THREE, normalMaps } = sceneRef.current;
-    const key = `${x},${y},${z}`;
-    
-    // Skip if blockType is 'air'
-    if (blockType.toLowerCase() === 'air') {
-      // Remove existing block if there is one
-      if (blocks.has(key)) {
-        scene.remove(blocks.get(key));
-        blocks.delete(key);
-      }
-      return;
-    }
-    
-    // Remove existing block at this position
-    if (blocks.has(key)) {
-      scene.remove(blocks.get(key));
-    }
-    
-    // Create new block
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    let material;
-    let color;
-    let roughness = 0.7;
-    let metalness = 0.0;
-    let normalScale = new THREE.Vector2(0.5, 0.5);
-    let normalMap = null;
-    
-    // Apply different colors/textures based on block type
-    switch(blockType.toLowerCase()) {
-      case 'grass':
-        color = 0x3bca2b;
-        roughness = 0.9;
-        normalScale.set(0.8, 0.8);
-        break;
-      case 'stone':
-        color = 0x969696;
-        roughness = 0.9;
-        normalScale.set(1.0, 1.0);
-        break;
-      case 'dirt':
-        color = 0x8b4513;
-        roughness = 0.8;
-        normalScale.set(0.7, 0.7);
-        break;
-      case 'wood':
-        color = 0x8b4513;
-        roughness = 0.6;
-        normalScale.set(0.6, 0.6);
-        break;
-      case 'water':
-        color = 0x1e90ff;
-        roughness = 0.1;
-        metalness = 0.2;
-        normalScale.set(0.3, 0.3);
-        break;
-      case 'sand':
-        color = 0xffef8f;
-        roughness = 0.8;
-        normalScale.set(0.5, 0.5);
-        break;
-      case 'glass':
-        color = 0xffffff;
-        roughness = 0.1;
-        metalness = 0.1;
-        normalScale.set(0.2, 0.2);
-        break;
-      case 'gold':
-        color = 0xFFD700;
-        roughness = 0.2;
-        metalness = 0.8;
-        normalScale.set(0.8, 0.8);
-        break;
-      case 'cobblestone':
-        color = 0x555555;
-        roughness = 1.0;
-        normalScale.set(1.2, 1.2);
-        break;
-      case 'brick':
-        color = 0xb22222;
-        roughness = 0.8;
-        normalScale.set(0.9, 0.9);
-        break;
-      case 'leaves':
-        color = 0x2d8c24;
-        roughness = 0.9;
-        normalScale.set(0.6, 0.6);
-        break;
-      case 'bedrock':
-        color = 0x221F26;
-        roughness = 0.9;
-        normalScale.set(1.5, 1.5);
-        break;
 
-      // Add cases for new materials
-      case 'lava':
-        color = 0xFF4500; // Orange-red
-        roughness = 0.3;
-        metalness = 0.0;
-        normalScale.set(0.9, 0.9);
-        break;
-      case 'gravel':
-        color = 0x777777; // Medium gray
-        roughness = 0.9;
-        normalScale.set(0.8, 0.8);
-        break;
-      case 'iron':
-        color = 0xCCCCCC; // Silver
-        roughness = 0.3;
-        metalness = 0.7;
-        normalScale.set(0.7, 0.7);
-        break;
-      case 'diamond':
-        color = 0x00FFFF; // Cyan
-        roughness = 0.1;
-        metalness = 0.9;
-        normalScale.set(0.9, 0.9);
-        break;
-      case 'emerald':
-        color = 0x50C878; // Emerald green
-        roughness = 0.2;
-        metalness = 0.8;
-        normalScale.set(0.8, 0.8);
-        break;
-      case 'obsidian':
-        color = 0x1A1A1A; // Very dark gray
-        roughness = 0.8;
-        metalness = 0.3;
-        normalScale.set(0.9, 0.9);
-        break;
-      case 'snow':
-        color = 0xFFFFFF; // White
-        roughness = 0.9;
-        normalScale.set(0.4, 0.4);
-        break;
-      case 'ice':
-        color = 0xADD8E6; // Light blue
-        roughness = 0.1;
-        metalness = 0.1;
-        normalScale.set(0.2, 0.2);
-        break;
-      case 'clay':
-        color = 0xB2B2B2; // Light gray
-        roughness = 0.8;
-        normalScale.set(0.6, 0.6);
-        break;
-      case 'wool':
-        color = 0xF5F5F5; // Off-white
-        roughness = 0.95;
-        normalScale.set(0.5, 0.5);
-        break;
-      default:
-        color = 0xff00ff; // Magenta for unknown blocks
-    }
-    
-    // Get the pre-generated normal map
-    normalMap = normalMaps.get(blockType.toLowerCase()) || normalMaps.get('stone');
-    
-    // Create material based on block type
-    if (blockType.toLowerCase() === 'glass' || blockType.toLowerCase() === 'water' || blockType.toLowerCase() === 'ice') {
-      material = new THREE.MeshPhysicalMaterial({ 
-        color: color,
-        transparent: true,
-        opacity: blockType.toLowerCase() === 'glass' ? 0.3 : 
-                 blockType.toLowerCase() === 'ice' ? 0.5 : 0.7,
-        roughness: roughness,
-        metalness: metalness,
-        normalMap: normalMap,
-        normalScale: normalScale,
-        clearcoat: 0.3,
-        clearcoatRoughness: 0.2
-      });
-    } else if (blockType.toLowerCase() === 'lava') {
-      material = new THREE.MeshStandardMaterial({ 
-        color: color,
-        roughness: roughness,
-        metalness: metalness,
-        normalMap: normalMap,
-        normalScale: normalScale,
-        emissive: 0xFF4500,
-        emissiveIntensity: 0.5
-      });
-    } else if (['diamond', 'emerald', 'gold', 'iron'].includes(blockType.toLowerCase())) {
-      material = new THREE.MeshPhysicalMaterial({ 
-        color: color,
-        roughness: roughness,
-        metalness: metalness,
-        normalMap: normalMap,
-        normalScale: normalScale,
-        clearcoat: 0.5,
-        clearcoatRoughness: 0.1,
-        reflectivity: 1.0
-      });
-    } else {
-      material = new THREE.MeshStandardMaterial({ 
-        color: color,
-        roughness: roughness,
-        metalness: metalness,
-        normalMap: normalMap,
-        normalScale: normalScale
-      });
-    }
-    
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, y, z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    
-    // Add to scene and store reference
-    scene.add(mesh);
-    blocks.set(key, mesh);
-  };
-  
-  // Clear all blocks from the scene
-  const clearBlocks = () => {
-    if (!sceneRef.current) return;
-    
-    const { scene, blocks } = sceneRef.current;
-    
-    // Remove all block meshes from the scene
-    blocks.forEach(mesh => {
-      scene.remove(mesh);
-    });
-    
-    // Clear the blocks map
-    blocks.clear();
-  };
-  
-  return (
-    <div className="h-[600px] flex items-center justify-center bg-gray-50 rounded-md overflow-hidden border border-gray-200 shadow-inner">
-      <canvas 
-        ref={canvasRef} 
-        className="w-full h-full" 
-      />
-    </div>
-  );
+			const blob = new Blob([workerCode], { type: "application/javascript" });
+			const workerUrl = URL.createObjectURL(blob);
+			const worker = new Worker(workerUrl);
+
+			// Set timeout to terminate worker (1 second)
+			const timeoutId = setTimeout(() => {
+				worker.terminate();
+				URL.revokeObjectURL(workerUrl);
+				toast.error("Error: Code execution timed out (max 1 second)");
+				console.error("Error: Code execution timed out");
+			}, 1000);
+
+			// Listen for messages from worker
+			worker.onmessage = (e) => {
+				const data = e.data;
+
+				if (data.action === "setBlock") {
+					const { x, y, z, blockType } = data.params;
+					handleSetBlock(x, y, z, blockType);
+				} else if (data.action === "complete") {
+					clearTimeout(timeoutId);
+					worker.terminate();
+					URL.revokeObjectURL(workerUrl);
+					toast.success("Code executed successfully");
+				} else if (data.action === "error") {
+					clearTimeout(timeoutId);
+					worker.terminate();
+					URL.revokeObjectURL(workerUrl);
+					toast.error(`Error: ${data.message}`);
+					console.error("Error in worker:", data.message);
+				}
+			};
+
+			// Start the worker
+			worker.postMessage("start");
+		} catch (error) {
+			console.error("Error executing code:", error);
+			toast.error(
+				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
+		}
+	}, [clearBlocks, handleSetBlock, code]);
+
+	// Execute user code whenever code changes
+	useEffect(() => {
+		if (inited && code) {
+			executeCode();
+		}
+	}, [inited, code, executeCode]);
+
+	return (
+		<div className="h-[600px] flex items-center justify-center bg-gray-50 rounded-md overflow-hidden border border-gray-200 shadow-inner">
+			<canvas ref={canvasRef} className="w-full h-full" />
+		</div>
+	);
 };
 
 export default SceneRenderer;
