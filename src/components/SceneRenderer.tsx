@@ -5,6 +5,7 @@ import * as THREE from "three";
 // @ts-expect-error dasdas
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { materialManager } from "../utils/materials";
+import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 
 interface SceneRendererProps {
 	code: string;
@@ -189,6 +190,57 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		[],
 	);
 
+	const handleFill = useCallback(
+		(
+			x1: number,
+			y1: number,
+			z1: number,
+			x2: number,
+			y2: number,
+			z2: number,
+			blockType: string,
+		) => {
+			if (!sceneRef.current) return;
+
+			const { scene, blocks } = sceneRef.current;
+
+			// Get the material from the material manager
+			const material = materialManager.getMaterial(blockType.toLowerCase());
+
+			// Create a single geometry for all blocks in the fill region
+			const geometries: THREE.BoxGeometry[] = [];
+
+			// Process blocks in reverse order to ensure later blocks are rendered "on top"
+			// This affects the order in the merged geometry
+			for (let x = Math.max(x1, x2); x >= Math.min(x1, x2); x--) {
+				for (let y = Math.max(y1, y2); y >= Math.min(y1, y2); y--) {
+					for (let z = Math.max(z1, z2); z >= Math.min(z1, z2); z--) {
+						// Create geometry for this block
+						const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+						// Translate the geometry to its position
+						geometry.translate(x, y, z);
+
+						// Add to geometries array
+						geometries.push(geometry);
+					}
+				}
+			}
+
+			// Merge all geometries into one
+			const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+
+			// Create a single mesh for all blocks
+			const mesh = new THREE.Mesh(mergedGeometry, material);
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
+
+			// Add to scene
+			scene.add(mesh);
+		},
+		[],
+	);
+
 	// Clear all blocks from the scene
 	const clearBlocks = useCallback(() => {
 		if (!sceneRef.current) return;
@@ -224,13 +276,10 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
         }
         
         function fill(x1, y1, z1, x2, y2, z2, blockType) {
-          for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-            for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-              for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
-                setBlock(x, y, z, blockType);
-              }
-            }
-          }
+			self.postMessage({ 
+				action: 'fill', 
+				params: { x1, y1, z1, x2, y2, z2, blockType } 
+			});
         }
       `;
 
@@ -271,6 +320,9 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				if (data.action === "setBlock") {
 					const { x, y, z, blockType } = data.params;
 					handleSetBlock(x, y, z, blockType);
+				} else if (data.action === "fill") {
+					const { x1, y1, z1, x2, y2, z2, blockType } = data.params;
+					handleFill(x1, y1, z1, x2, y2, z2, blockType);
 				} else if (data.action === "complete") {
 					clearTimeout(timeoutId);
 					worker.terminate();
@@ -292,7 +344,7 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 		}
-	}, [clearBlocks, handleSetBlock, code]);
+	}, [clearBlocks, handleSetBlock, handleFill, code, generationId]);
 
 	// Execute user code whenever code changes
 	useEffect(() => {

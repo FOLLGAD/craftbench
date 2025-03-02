@@ -151,7 +151,7 @@ const Home = () => {
 									onClick={goToNextPage}
 									disabled={
 										!comparisons ||
-										comparisons.length < ITEMS_PER_PAGE ||
+										comparisons.length < maxItemsPerPage ||
 										isLoading
 									}
 								>
