@@ -170,27 +170,27 @@ export type Database = {
       }
       "mc-votes": {
         Row: {
-          comparison_id: string | null
+          comparison_id: string
           created_at: string | null
           generation_id: string
           id: string
-          user_id: string | null
+          user_id: string
           vote: number
         }
         Insert: {
-          comparison_id?: string | null
+          comparison_id: string
           created_at?: string | null
           generation_id: string
           id?: string
-          user_id?: string | null
+          user_id?: string
           vote: number
         }
         Update: {
-          comparison_id?: string | null
+          comparison_id?: string
           created_at?: string | null
           generation_id?: string
           id?: string
-          user_id?: string | null
+          user_id?: string
           vote?: number
         }
         Relationships: [

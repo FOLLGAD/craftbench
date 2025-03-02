@@ -39,6 +39,10 @@ const Vote = () => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["votable-comparisons"],
     queryFn: async () => {
+      // Debug user ID - log the current user ID
+      const { data: userData } = await supabase.auth.getUser();
+      console.log("Current User ID:", userData.user?.id);
+      
       // Get all comparisons from mc-comparisons
       const { data: comparisons, error: comparisonsError } = await supabase
         .from("mc-comparisons")
@@ -69,6 +73,7 @@ const Vote = () => {
 
       // Get user ID for checking votes
       const userId = (await supabase.auth.getUser()).data.user?.id;
+      console.log("User ID for checking votes:", userId);
 
       // Get all votes in a single query, explicitly selecting the columns we need
       // Avoid the GROUP BY error by not performing aggregation in the query
@@ -77,6 +82,7 @@ const Vote = () => {
         .select("comparison_id, generation_id, user_id");
 
       if (votesError) throw new Error(votesError.message);
+      console.log("All votes:", allVotes);
 
       // Process each comparison with its generations and votes
       const comparisonData = comparisons.map(comparison => {
@@ -88,11 +94,15 @@ const Vote = () => {
         const comparisonVotes = (allVotes || []).filter(
           vote => vote.comparison_id === comparison.id
         );
+        
+        console.log(`Votes for comparison ${comparison.id}:`, comparisonVotes);
 
         // Check if user has voted on this comparison
         const hasVoted = userId && comparisonVotes.some(
           vote => vote.user_id === userId
         );
+        
+        console.log(`Has user ${userId} voted on comparison ${comparison.id}?`, hasVoted);
 
         // Count votes per generation
         const voteCounts: { [key: string]: number } = {};
@@ -139,16 +149,29 @@ const Vote = () => {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       
+      console.log("Voting with user ID:", userId);
+      console.log("Comparison ID:", comparisonId);
+      console.log("Generation ID:", generationId);
+      
+      // Log the current session to debug authentication issues
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log("Current session:", sessionData);
+      
       // Add the vote value (1) to fix the not-null constraint
       // Also now include the user_id in the vote record
-      const { error } = await supabase.from("mc-votes").insert({
+      const { data: voteData, error } = await supabase.from("mc-votes").insert({
         comparison_id: comparisonId,
         generation_id: generationId,
         vote: 1,  // Adding the required vote value
         user_id: userId  // Add user_id to associate the vote with the user
-      });
+      }).select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Vote insert error:", error);
+        throw error;
+      }
+      
+      console.log("Vote inserted successfully:", voteData);
 
       // Update local state to mark this comparison as voted
       setVotedComparisons(prev => new Set([...prev, comparisonId]));
@@ -161,6 +184,7 @@ const Vote = () => {
         description: "Thanks for your vote!",
       });
     } catch (error: any) {
+      console.error("Vote error details:", error);
       toast({
         title: "Error",
         description: `Failed to record vote: ${error.message}`,
