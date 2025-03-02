@@ -1,8 +1,7 @@
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface PromptInputProps {
   prompt: string;
@@ -12,35 +11,53 @@ interface PromptInputProps {
 }
 
 const PromptInput = ({ prompt, setPrompt, generateCode, isGenerating }: PromptInputProps) => {
-  return (
-    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Model Comparison</h2>
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (prompt.trim()) {
+        generateCode();
+      }
+    }
+  };
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Describe your voxel scene
-        </label>
+  return (
+    <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-8 max-w-3xl mx-auto w-full">
+      <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+        Compare AI Voxel Models
+      </h2>
+      
+      <p className="text-gray-600 text-center mb-8">
+        Enter a prompt to generate voxel scenes with different AI models
+      </p>
+
+      <div className="relative">
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          className="min-h-32 text-lg p-4"
-          placeholder="Example: A small castle with towers and a moat"
+          onKeyDown={handleKeyDown}
+          className="min-h-32 text-lg p-6 pr-16 rounded-xl border-2 border-gray-300 focus:border-purple-500 shadow-inner resize-none"
+          placeholder="A small castle with towers and a moat surrounded by trees..."
+          disabled={isGenerating}
         />
+        <button
+          onClick={generateCode}
+          disabled={isGenerating || !prompt}
+          className={`absolute right-4 bottom-4 p-3 rounded-full ${
+            isGenerating || !prompt
+              ? "bg-gray-200 text-gray-400"
+              : "bg-gradient-to-r from-purple-600 to-blue-500 text-white shadow-md hover:shadow-lg transition-all hover:scale-105"
+          }`}
+          aria-label="Generate with two models"
+        >
+          <Sparkles size={24} className={isGenerating ? "animate-pulse" : ""} />
+        </button>
       </div>
 
-      <Button
-        onClick={generateCode}
-        disabled={isGenerating || !prompt}
-        className="w-full py-6 text-lg bg-purple-600 hover:bg-purple-700"
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...
-          </>
-        ) : (
-          "Generate with Two Models"
-        )}
-      </Button>
+      {isGenerating && (
+        <p className="text-center mt-4 text-purple-600 animate-pulse">
+          Working on your scene...
+        </p>
+      )}
     </div>
   );
 };

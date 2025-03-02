@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,18 +114,20 @@ const Compare = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 overflow-hidden flex flex-col">
       <Header />
 
-      <div className="container mx-auto p-6 flex flex-col gap-6">
+      <main className="container mx-auto px-4 py-12 flex-1 flex flex-col items-center justify-center">
         {/* Prompt Section - Only show when no generations are available */}
         {generations.length === 0 && !isGenerating && !error && (
-          <PromptInput 
-            prompt={prompt} 
-            setPrompt={setPrompt} 
-            generateCode={generateCode} 
-            isGenerating={isGenerating} 
-          />
+          <div className="w-full max-w-3xl animate-fadeIn">
+            <PromptInput 
+              prompt={prompt} 
+              setPrompt={setPrompt} 
+              generateCode={generateCode} 
+              isGenerating={isGenerating} 
+            />
+          </div>
         )}
 
         {/* Loading State */}
@@ -135,16 +138,18 @@ const Compare = () => {
 
         {/* Results Section */}
         {generations.length > 0 && !isGenerating && !error && (
-          <ResultsSection 
-            generations={generations}
-            shuffledOrder={shuffledOrder}
-            selectedGeneration={selectedGeneration}
-            hasVoted={hasVoted}
-            onVote={handleVote}
-            onReset={resetComparison}
-          />
+          <div className="w-full animate-scaleIn">
+            <ResultsSection 
+              generations={generations}
+              shuffledOrder={shuffledOrder}
+              selectedGeneration={selectedGeneration}
+              hasVoted={hasVoted}
+              onVote={handleVote}
+              onReset={resetComparison}
+            />
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };
