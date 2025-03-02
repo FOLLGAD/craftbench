@@ -15,22 +15,6 @@ const Generate = () => {
   const [usedModel, setUsedModel] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Initialize PostHog with your specific key and host
-    posthog.init('phc_FTO98o8i8IpbVwq7yfTBlC6dnF6s6vG130q9keHhSwe', { 
-      api_host: 'https://us.i.posthog.com',
-      loaded: (posthog) => {
-        posthog.identify(
-          `anonymous-${Math.random().toString(36).substring(2, 9)}`,
-          { source: "voxel-sculptor" }
-        );
-      }
-    });
-    
-    // Track page view
-    posthog.capture("page_view", { page: "generate" });
-  }, []);
-
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       toast.error("Please enter a prompt");

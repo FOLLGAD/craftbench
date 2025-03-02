@@ -3,75 +3,19 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import LoadingState from "@/components/compare/LoadingState";
 import ErrorState from "@/components/compare/ErrorState";
 import VoteComparison from "@/components/vote/VoteComparison";
 import { useVote } from "@/hooks/use-vote";
-import { Comparison } from "@/types/comparison";
+import type { Comparison } from "@/types/comparison";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { votedComparisons, handleVote } = useVote();
   
   // Add state for displaying the latest comparison
   const [latestComparisonId, setLatestComparisonId] = useState<string | null>(null);
-
-  // Perform anonymous sign-in when the component loads
-  useEffect(() => {
-    const signInAnonymously = async () => {
-      console.log("--- Authentication Check (Index) ---");
-      const { data: sessionData } = await supabase.auth.getSession();
-      
-      if (!sessionData.session) {
-        console.log("No active session, signing in anonymously");
-        try {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          
-          if (error) {
-            console.error("Anonymous sign-in error:", error.message);
-            toast({
-              title: "Authentication Error",
-              description: "Failed to create anonymous session. Some features may not work.",
-              variant: "destructive",
-            });
-          } else {
-            console.log("Anonymous sign-in successful. User ID:", data.user?.id);
-            console.log("Session:", data.session);
-          }
-        } catch (e) {
-          console.error("Unexpected error during anonymous sign-in:", e);
-        }
-      } else {
-        console.log("Using existing session");
-        console.log("Session user ID:", sessionData.session.user.id);
-        console.log("Session expires at:", new Date(sessionData.session.expires_at * 1000).toISOString());
-      }
-
-      // Log current user regardless of path
-      const { data: currentUser } = await supabase.auth.getUser();
-      console.log("Current authenticated user ID in Index:", currentUser.user?.id);
-    };
-
-    signInAnonymously();
-
-    // Fetch the latest comparison ID
-    const fetchLatestComparison = async () => {
-      const { data, error } = await supabase
-        .from("mc-comparisons")
-        .select("id")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      
-      if (!error && data && data.length > 0) {
-        setLatestComparisonId(data[0].id);
-      }
-    };
-    
-    fetchLatestComparison();
-  }, [toast]);
 
   // Fetch the latest comparison for voting
   const { data: comparison, isLoading, error, refetch } = useQuery({

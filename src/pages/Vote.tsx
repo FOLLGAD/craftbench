@@ -6,7 +6,7 @@ import VoteHeader from "@/components/vote/VoteHeader";
 import { useVote } from "@/hooks/use-vote";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Types moved to a separate file for reuse
@@ -26,42 +26,42 @@ const Vote = () => {
 	});
 
 	// Function to select a random unvoted comparison
-	const selectRandomUnvotedComparison = useCallback(() => {
-		if (!data || data.length === 0) return;
+	const selectRandomUnvotedComparison = useCallback(async () => {
+		const { data: userData } = await supabase.auth.getUser();
+		const userId = userData.user?.id;
 
-		// Filter out comparisons that have already been voted on
-		const unvotedComparisons = data.filter(
-			(comparison) => !votedComparisons.has(comparison.id),
-		);
+		if (!userId) return;
 
-		if (unvotedComparisons.length === 0) {
-			// All comparisons have been voted on
-			setCurrentComparisonId(null);
-			return;
-		}
+		const { data: votes } = await supabase
+			.from("mc-votes")
+			.select("comparison_id")
+			.eq("user_id", userId);
 
-		// Select a random comparison from the unvoted ones
-		const randomIndex = Math.floor(Math.random() * unvotedComparisons.length);
-		const randomComparison = unvotedComparisons[randomIndex];
+		const { data: comparisons, error: comparisonsError } = await supabase
+			.from("mc-comparisons")
+			.select("id")
+			.order("created_at", { ascending: false })
+			.limit(50)
+			.not(
+				"id",
+				"in",
+				`(${votes?.map((vote) => vote.comparison_id).join(",")})`,
+			);
+
+		if (comparisonsError) throw new Error(comparisonsError.message);
+		if (!comparisons || comparisons.length === 0) return;
+
+		const randomIndex = Math.floor(Math.random() * comparisons.length);
+		const randomComparison = comparisons[randomIndex];
 		setCurrentComparisonId(randomComparison.id);
-	}, [data, votedComparisons]);
-
-	// Select a random unvoted comparison when data changes or after voting
-	useEffect(() => {
-		if (data && data.length > 0) {
-			selectRandomUnvotedComparison();
-		}
-	}, [data, selectRandomUnvotedComparison]);
+	}, []);
 
 	// Handle vote submission
 	const handleVoteSubmission = async (
 		comparisonId: string,
 		generationId: string,
 	) => {
-		const success = await handleVote(comparisonId, generationId);
-		if (success) {
-			refetch();
-		}
+		handleVote(comparisonId, generationId);
 	};
 
 	// Fetch another random unvoted comparison
