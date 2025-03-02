@@ -237,14 +237,10 @@ async function fetchVotableComparisons(): Promise<Comparison[]> {
       vote => vote.comparison_id === comparison.id
     );
     
-    console.log(`Votes for comparison ${comparison.id}:`, comparisonVotes);
-
     // Check if user has voted on this comparison
     const hasVoted = userId && comparisonVotes.some(
       vote => vote.user_id === userId
     );
-    
-    console.log(`Has user ${userId} voted on comparison ${comparison.id}?`, hasVoted);
 
     // Count votes per generation
     const voteCounts: { [key: string]: number } = {};
