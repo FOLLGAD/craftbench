@@ -27,12 +27,12 @@ export const getModelRatings = async (modelNames: string[]) => {
 		throw new Error(error.message);
 	}
 
-	return data.reduce(
+	return data.reduce<Record<string, number>>(
 		(acc, model) => {
 			acc[model.model_name] = model.elo;
 			return acc;
 		},
-		{} as Record<string, number>,
+		{},
 	);
 };
 export const getComparisonVotes = async (comparisonId: string) => {

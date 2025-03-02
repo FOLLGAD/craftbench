@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import posthog from "posthog-js";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as THREE from "three";
 // @ts-expect-error dasdas
@@ -7,6 +8,7 @@ import { materialManager } from "../utils/materials";
 
 interface SceneRendererProps {
 	code: string;
+	generationId?: string;
 }
 
 interface SceneRef {
@@ -19,7 +21,7 @@ interface SceneRef {
 	animationFrameId?: number; // Added to track animation frame
 }
 
-const SceneRenderer = ({ code }: SceneRendererProps) => {
+const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const sceneRef = useRef<SceneRef | null>(null);
 	const [inited, setInited] = useState(false);
@@ -254,9 +256,13 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
 			const timeoutId = setTimeout(() => {
 				worker.terminate();
 				URL.revokeObjectURL(workerUrl);
-				toast.error("Error: Code execution timed out (max 1 second)");
+				// toast.error("Error: Code execution timed out (max 1 second)");
 				console.error("Error: Code execution timed out");
-			}, 1000);
+				posthog.capture("code_execution_timeout", {
+					code,
+					generationId,
+				});
+			}, 5000);
 
 			// Listen for messages from worker
 			worker.onmessage = (e) => {

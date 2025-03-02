@@ -4,16 +4,22 @@ import LoadingState from "@/components/compare/LoadingState";
 import HeroSection from "@/components/home/HeroSection";
 import { Button } from "@/components/ui/button";
 import VoteComparison from "@/components/vote/VoteComparison";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import type { Comparison } from "@/types/comparison";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE_DESKTOP = 5;
+const ITEMS_PER_PAGE_MOBILE = 1;
 
 const Home = () => {
 	const [currentPage, setCurrentPage] = useState(0);
+	const isMobile = useIsMobile();
+	const maxItemsPerPage = isMobile
+		? ITEMS_PER_PAGE_MOBILE
+		: ITEMS_PER_PAGE_DESKTOP;
 
 	// Fetch recent comparisons with pagination
 	const {
@@ -30,8 +36,8 @@ const Home = () => {
 				.select("id, prompt, generation_a_id, generation_b_id, created_at")
 				.order("created_at", { ascending: false })
 				.range(
-					currentPage * ITEMS_PER_PAGE,
-					(currentPage + 1) * ITEMS_PER_PAGE - 1,
+					currentPage * maxItemsPerPage,
+					(currentPage + 1) * maxItemsPerPage - 1,
 				);
 
 			if (comparisonError) throw new Error(comparisonError.message);

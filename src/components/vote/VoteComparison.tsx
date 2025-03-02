@@ -141,7 +141,10 @@ const VoteComparison = ({
 						</div>
 
 						<div className="bg-gray-800 rounded-md mb-6 h-[300px] overflow-hidden">
-							<SceneRenderer code={generation.generated_code} />
+							<SceneRenderer
+								code={generation.generated_code}
+								generationId={generation.id}
+							/>
 						</div>
 
 						<Button
