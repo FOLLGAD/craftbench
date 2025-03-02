@@ -9,31 +9,12 @@ import LoadingState from "@/components/compare/LoadingState";
 import ErrorState from "@/components/compare/ErrorState";
 import VoteComparison from "@/components/vote/VoteComparison";
 import { useVote } from "@/hooks/use-vote";
-
-// Use the same types as in Vote.tsx
-type Generation = {
-  id: string;
-  prompt: string;
-  model_name: string;
-  generated_code: string;
-};
-
-type Comparison = {
-  id: string;
-  generation_a_id: string;
-  generation_b_id: string;
-  prompt: string;
-  generations: Generation[];
-  voted: boolean;
-  votes: {
-    [key: string]: number;
-  };
-};
+import { Comparison } from "@/types/comparison";
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { votedComparisons, setVotedComparisons, handleVote } = useVote();
+  const { votedComparisons, handleVote } = useVote();
   
   // Add state for displaying the latest comparison
   const [latestComparisonId, setLatestComparisonId] = useState<string | null>(null);
@@ -96,7 +77,7 @@ const Index = () => {
   const { data: comparison, isLoading, error, refetch } = useQuery({
     queryKey: ["latest-comparison", latestComparisonId],
     enabled: !!latestComparisonId,
-    queryFn: async () => {
+    queryFn: async (): Promise<Comparison | null> => {
       if (!latestComparisonId) return null;
       
       // Get the specific comparison
@@ -146,11 +127,6 @@ const Index = () => {
         if (!voteCounts[genId]) voteCounts[genId] = 0;
         voteCounts[genId] += 1;
       });
-
-      // Update the votedComparisons set if the user has voted
-      if (hasVoted) {
-        setVotedComparisons(prev => new Set([...prev, latestComparisonId]));
-      }
 
       return {
         id: comparisonData.id,

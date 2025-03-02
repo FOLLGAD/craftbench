@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,30 +11,14 @@ import LoadingState from "@/components/compare/LoadingState";
 import ErrorState from "@/components/compare/ErrorState";
 import { useVote } from "@/hooks/use-vote";
 
-type Generation = {
-  id: string;
-  prompt: string;
-  model_name: string;
-  generated_code: string;
-};
-
-type Comparison = {
-  id: string;
-  generation_a_id: string;
-  generation_b_id: string;
-  prompt: string;
-  generations: Generation[];
-  voted: boolean;
-  votes: {
-    [key: string]: number;
-  };
-};
+// Types moved to a separate file for reuse
+import { Comparison } from "@/types/comparison";
 
 const Vote = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { votedComparisons, setVotedComparisons, handleVote } = useVote();
+  const { votedComparisons, handleVote } = useVote();
+  const [currentComparisonId, setCurrentComparisonId] = useState<string | null>(null);
 
   // Perform anonymous sign-in when the component loads
   useEffect(() => {
@@ -77,128 +62,51 @@ const Vote = () => {
   // Fetch comparisons that have at least one vote
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["votable-comparisons"],
-    queryFn: async () => {
-      // Debug user ID - log the current user ID
-      const { data: userData } = await supabase.auth.getUser();
-      console.log("Current User ID:", userData.user?.id);
-      
-      // Get all comparisons from mc-comparisons
-      const { data: comparisons, error: comparisonsError } = await supabase
-        .from("mc-comparisons")
-        .select("id, prompt, generation_a_id, generation_b_id")
-        .order("created_at", { ascending: false });
-
-      if (comparisonsError) throw new Error(comparisonsError.message);
-      if (!comparisons || comparisons.length === 0) return [];
-
-      // Collect all generation IDs to fetch in a single query
-      const generationIds = comparisons.flatMap(comparison => [
-        comparison.generation_a_id, 
-        comparison.generation_b_id
-      ]);
-
-      // Fetch all generations in a single query
-      const { data: allGenerations, error: generationsError } = await supabase
-        .from("mc-generations")
-        .select("*")
-        .in("id", generationIds);
-
-      if (generationsError) throw new Error(generationsError.message);
-      
-      // Create a map of generation ids to generation objects for quick lookup
-      const generationsMap = Object.fromEntries(
-        (allGenerations || []).map(gen => [gen.id, gen])
-      );
-
-      // Get user ID for checking votes
-      const userId = (await supabase.auth.getUser()).data.user?.id;
-      console.log("User ID for checking votes:", userId);
-
-      // Get all votes in a single query, explicitly selecting the columns we need
-      // Avoid the GROUP BY error by not performing aggregation in the query
-      const { data: allVotes, error: votesError } = await supabase
-        .from("mc-votes")
-        .select("comparison_id, generation_id, user_id");
-
-      if (votesError) throw new Error(votesError.message);
-      console.log("All votes:", allVotes);
-
-      // Process each comparison with its generations and votes
-      const comparisonData = comparisons.map(comparison => {
-        // Get both generations from the map
-        const genA = generationsMap[comparison.generation_a_id];
-        const genB = generationsMap[comparison.generation_b_id];
-        
-        // Filter votes for this comparison
-        const comparisonVotes = (allVotes || []).filter(
-          vote => vote.comparison_id === comparison.id
-        );
-        
-        console.log(`Votes for comparison ${comparison.id}:`, comparisonVotes);
-
-        // Check if user has voted on this comparison
-        const hasVoted = userId && comparisonVotes.some(
-          vote => vote.user_id === userId
-        );
-        
-        console.log(`Has user ${userId} voted on comparison ${comparison.id}?`, hasVoted);
-
-        // Count votes per generation
-        const voteCounts: { [key: string]: number } = {};
-        comparisonVotes.forEach(vote => {
-          const genId = vote.generation_id;
-          if (!voteCounts[genId]) voteCounts[genId] = 0;
-          voteCounts[genId] += 1;
-        });
-
-        return {
-          id: comparison.id,
-          generation_a_id: comparison.generation_a_id,
-          generation_b_id: comparison.generation_b_id,
-          prompt: comparison.prompt,
-          generations: [genA, genB].filter(Boolean),
-          voted: !!hasVoted,
-          votes: voteCounts
-        };
-      });
-
-      return comparisonData.filter(comp => comp.generations.length === 2);
-    },
+    queryFn: fetchVotableComparisons,
   });
 
+  // Select a random unvoted comparison when data changes or after voting
   useEffect(() => {
-    // Update the votedComparisons set when data changes
-    if (data) {
-      const newVotedSet = new Set<string>();
-      data.forEach(comparison => {
-        if (comparison.voted) {
-          newVotedSet.add(comparison.id);
-        }
-      });
-      setVotedComparisons(newVotedSet);
+    if (data && data.length > 0) {
+      selectRandomUnvotedComparison();
     }
-  }, [data, setVotedComparisons]);
+  }, [data, votedComparisons]);
 
+  // Function to select a random unvoted comparison
+  const selectRandomUnvotedComparison = () => {
+    if (!data || data.length === 0) return;
+    
+    // Filter out comparisons that have already been voted on
+    const unvotedComparisons = data.filter(
+      comparison => !votedComparisons.has(comparison.id)
+    );
+    
+    if (unvotedComparisons.length === 0) {
+      // All comparisons have been voted on
+      setCurrentComparisonId(null);
+      return;
+    }
+    
+    // Select a random comparison from the unvoted ones
+    const randomIndex = Math.floor(Math.random() * unvotedComparisons.length);
+    const randomComparison = unvotedComparisons[randomIndex];
+    setCurrentComparisonId(randomComparison.id);
+  };
+
+  // Handle vote submission
   const handleVoteSubmission = async (
     comparisonId: string,
     generationId: string
   ) => {
     const success = await handleVote(comparisonId, generationId);
     if (success) {
-      // Refresh the data to get updated vote counts
       refetch();
     }
   };
 
+  // Fetch another random unvoted comparison
   const handleNext = () => {
-    if (data && currentIndex < data.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      toast({
-        title: "No more comparisons",
-        description: "You've reviewed all available comparisons.",
-      });
-    }
+    selectRandomUnvotedComparison();
   };
 
   const handleCreateNew = () => {
@@ -224,9 +132,13 @@ const Vote = () => {
     );
   }
 
-  const currentComparison = data[currentIndex];
-  const hasNextComparison = currentIndex < data.length - 1;
-  const allVoted = data.every(comp => votedComparisons.has(comp.id));
+  // Find the current comparison
+  const currentComparison = currentComparisonId 
+    ? data.find(comp => comp.id === currentComparisonId)
+    : null;
+  
+  // Check if there are any unvoted comparisons
+  const hasUnvotedComparisons = data.some(comp => !votedComparisons.has(comp.id));
 
   return (
     <div className="container mx-auto py-8">
@@ -235,13 +147,15 @@ const Vote = () => {
       <div className="mb-4 flex justify-between items-center">
         <div>
           <span className="text-sm font-medium text-gray-500">
-            Comparison {currentIndex + 1} of {data.length}
+            {hasUnvotedComparisons 
+              ? "Vote on this random comparison" 
+              : "All comparisons voted"}
           </span>
         </div>
         <div className="flex gap-2">
-          {hasNextComparison && (
+          {hasUnvotedComparisons && (
             <Button onClick={handleNext} variant="outline">
-              Next Comparison
+              Next Random Comparison
             </Button>
           )}
           <Button onClick={handleCreateNew} variant="default">
@@ -250,15 +164,13 @@ const Vote = () => {
         </div>
       </div>
       
-      {currentComparison && (
+      {currentComparison ? (
         <VoteComparison
           comparison={currentComparison}
           onVote={handleVoteSubmission}
           hasVoted={votedComparisons.has(currentComparison.id)}
         />
-      )}
-      
-      {allVoted && (
+      ) : (
         <div className="mt-6 text-center">
           <p className="text-gray-600 mb-4">You've voted on all available comparisons!</p>
           <Button onClick={handleCreateNew}>Create New Comparison</Button>
@@ -267,5 +179,93 @@ const Vote = () => {
     </div>
   );
 };
+
+// Extracted the data fetching logic into a separate function
+async function fetchVotableComparisons(): Promise<Comparison[]> {
+  // Debug user ID - log the current user ID
+  const { data: userData } = await supabase.auth.getUser();
+  console.log("Current User ID:", userData.user?.id);
+  
+  // Get all comparisons from mc-comparisons
+  const { data: comparisons, error: comparisonsError } = await supabase
+    .from("mc-comparisons")
+    .select("id, prompt, generation_a_id, generation_b_id")
+    .order("created_at", { ascending: false });
+
+  if (comparisonsError) throw new Error(comparisonsError.message);
+  if (!comparisons || comparisons.length === 0) return [];
+
+  // Collect all generation IDs to fetch in a single query
+  const generationIds = comparisons.flatMap(comparison => [
+    comparison.generation_a_id, 
+    comparison.generation_b_id
+  ]);
+
+  // Fetch all generations in a single query
+  const { data: allGenerations, error: generationsError } = await supabase
+    .from("mc-generations")
+    .select("*")
+    .in("id", generationIds);
+
+  if (generationsError) throw new Error(generationsError.message);
+  
+  // Create a map of generation ids to generation objects for quick lookup
+  const generationsMap = Object.fromEntries(
+    (allGenerations || []).map(gen => [gen.id, gen])
+  );
+
+  // Get user ID for checking votes
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  console.log("User ID for checking votes:", userId);
+
+  // Get all votes in a single query
+  const { data: allVotes, error: votesError } = await supabase
+    .from("mc-votes")
+    .select("comparison_id, generation_id, user_id");
+
+  if (votesError) throw new Error(votesError.message);
+  console.log("All votes:", allVotes);
+
+  // Process each comparison with its generations and votes
+  const comparisonData = comparisons.map(comparison => {
+    // Get both generations from the map
+    const genA = generationsMap[comparison.generation_a_id];
+    const genB = generationsMap[comparison.generation_b_id];
+    
+    // Filter votes for this comparison
+    const comparisonVotes = (allVotes || []).filter(
+      vote => vote.comparison_id === comparison.id
+    );
+    
+    console.log(`Votes for comparison ${comparison.id}:`, comparisonVotes);
+
+    // Check if user has voted on this comparison
+    const hasVoted = userId && comparisonVotes.some(
+      vote => vote.user_id === userId
+    );
+    
+    console.log(`Has user ${userId} voted on comparison ${comparison.id}?`, hasVoted);
+
+    // Count votes per generation
+    const voteCounts: { [key: string]: number } = {};
+    comparisonVotes.forEach(vote => {
+      const genId = vote.generation_id;
+      if (!voteCounts[genId]) voteCounts[genId] = 0;
+      voteCounts[genId] += 1;
+    });
+
+    return {
+      id: comparison.id,
+      generation_a_id: comparison.generation_a_id,
+      generation_b_id: comparison.generation_b_id,
+      prompt: comparison.prompt,
+      generations: [genA, genB].filter(Boolean),
+      voted: !!hasVoted,
+      votes: voteCounts
+    };
+  });
+
+  return comparisonData.filter(comp => comp.generations.length === 2);
+}
 
 export default Vote;

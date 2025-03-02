@@ -3,25 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import SceneRenderer from "@/components/SceneRenderer";
 import { Button } from "@/components/ui/button";
 import { ThumbsUp } from "lucide-react";
-
-type Generation = {
-  id: string;
-  prompt: string;
-  model_name: string;
-  generated_code: string;
-};
-
-type Comparison = {
-  id: string;
-  generation_a_id: string;
-  generation_b_id: string;
-  prompt: string;
-  generations: Generation[];
-  voted: boolean;
-  votes: {
-    [key: string]: number;
-  };
-};
+import { Comparison } from "@/types/comparison";
 
 interface VoteComparisonProps {
   comparison: Comparison;
