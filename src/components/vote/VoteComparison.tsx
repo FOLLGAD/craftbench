@@ -97,7 +97,7 @@ const VoteComparison = ({
   };
   const generations = [comparison.data?.generation_a, comparison.data?.generation_b].filter(Boolean);
   return <div className="mb-8">
-			<div className="mb-6 p-4">
+			<div className="mb-6 p-4 py-0">
 				
 				<p className="text-gray-700 text-2xl font-semibold">{c.prompt}</p>
 			</div>
