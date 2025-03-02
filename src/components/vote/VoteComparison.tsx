@@ -1,9 +1,12 @@
+
 import SceneRenderer from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useVote } from "@/hooks/use-vote";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDistance } from "date-fns";
 import { ShareIcon, ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -123,6 +126,20 @@ const VoteComparison = ({
 		return aVotes > bVotes ? genAid : genBid;
 	}, [comparisonVotes.data, generations]);
 
+	// Format the timestamp to show "x time ago"
+	const formatTimeAgo = (timestamp: string | null | undefined) => {
+		if (!timestamp) return "";
+		const date = new Date(timestamp);
+		return formatDistance(date, new Date(), { addSuffix: true });
+	};
+
+	// Get full formatted date for title attribute
+	const formatFullDate = (timestamp: string | null | undefined) => {
+		if (!timestamp) return "";
+		const date = new Date(timestamp);
+		return date.toLocaleString();
+	};
+
 	return (
 		<div className="mb-8 shadow-lg rounded-lg p-4 border border-gray-200 bg-white">
 			{comparison.data ? (
@@ -149,6 +166,16 @@ const VoteComparison = ({
 								toast.success("Copied to clipboard");
 							}}
 						/>
+					</div>
+
+					{/* Added timestamp display */}
+					<div className="text-center mb-3">
+						<span 
+							className="text-sm text-gray-500"
+							title={formatFullDate(comparison.data.created_at)}
+						>
+							{formatTimeAgo(comparison.data.created_at)}
+						</span>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
