@@ -70,10 +70,11 @@ const Vote = () => {
       // Get user ID for checking votes
       const userId = (await supabase.auth.getUser()).data.user?.id;
 
-      // Get all votes in a single query
+      // Get all votes in a single query, explicitly selecting the columns we need
+      // Avoid the GROUP BY error by not performing aggregation in the query
       const { data: allVotes, error: votesError } = await supabase
         .from("mc-votes")
-        .select("comparison_id, generation_id, count, user_id");
+        .select("comparison_id, generation_id, user_id");
 
       if (votesError) throw new Error(votesError.message);
 
