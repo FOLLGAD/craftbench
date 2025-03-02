@@ -129,7 +129,7 @@ You can be creative, but remember: respond ONLY with plain JavaScript code and n
                 },
                 { role: "user", content: prompt }
               ],
-              max_tokens: 1000, // Limit token count
+              max_tokens: 4096, // Increased token count from 1000 to 4096
               temperature: 0.7  // Slightly reduce temperature for faster responses
             }),
           },
