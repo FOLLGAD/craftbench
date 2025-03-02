@@ -19,7 +19,7 @@ const Footer = () => {
 						href="https://lovable.dev"
 						target="_blank"
 						rel="noopener noreferrer"
-						className="text-purple-500 hover:text-purple-600 transition-colors"
+						className="text-blue-500 hover:text-blue-600 transition-colors"
 					>
 						lovable.dev
 					</a>

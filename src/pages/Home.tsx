@@ -127,7 +127,7 @@ const Home = () => {
 
 						{isLoading ? <LoadingState /> : error ? <ErrorState error={(error as Error).message} onReset={handleError} /> : !comparisons || comparisons.length === 0 ? <div className="text-center py-12">
 								<p className="text-gray-500 mb-4">No comparisons found</p>
-								<Button onClick={() => document.querySelector("input")?.focus()} className="bg-purple-600 hover:bg-purple-700 text-white">
+								<Button onClick={() => document.querySelector("input")?.focus()} className="bg-green-800 hover:bg-green-900 text-white">
 									Create Your First Comparison
 								</Button>
 							</div> : <div className="space-y-8">

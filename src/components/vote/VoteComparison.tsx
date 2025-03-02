@@ -165,13 +165,15 @@ const VoteComparison = ({
 												: `Model ${index + 1}`}
 										</h3>
 
-										{winner === generation.id && (
+										{winner === generation.id && myVote && (
 											<Badge variant="default" className="bg-green-800">
 												Winner
 											</Badge>
 										)}
 
-										{winner === "tie" && <Badge variant="secondary">Tie</Badge>}
+										{winner === "tie" && myVote && (
+											<Badge variant="secondary">Tie</Badge>
+										)}
 
 										{!!adminCode && (
 											<Dialog>
