@@ -136,6 +136,10 @@ You can be creative, but remember: respond ONLY with plain JavaScript code and n
           FETCH_TIMEOUT
         );
 
+        // Log the full response
+        console.log(`Response status from ${modelId}:`, response.status);
+        console.log(`Response headers from ${modelId}:`, JSON.stringify(Object.fromEntries([...response.headers])));
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Error from OpenRouter (${modelId}):`, errorText);
@@ -149,6 +153,8 @@ You can be creative, but remember: respond ONLY with plain JavaScript code and n
         }
 
         const data = await response.json();
+        console.log(`Full response from ${modelId}:`, JSON.stringify(data));
+        
         const generatedCode = data.choices[0]?.message?.content || "// No code generated";
         console.log(`Successfully generated code with ${modelId}`);
 
