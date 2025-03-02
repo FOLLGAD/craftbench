@@ -18,7 +18,19 @@ interface GenerationCardProps {
 }
 
 const GenerationCard = ({ index, generation, isSelected, hasVoted, onVote }: GenerationCardProps) => {
-  console.log(generation.generated_code)
+  // Format the model name to be more readable
+  const formatModelName = (modelName: string) => {
+    // Remove organization prefix (e.g., "anthropic/", "openai/")
+    const withoutOrg = modelName.split('/').pop() || modelName;
+    
+    // Replace dashes with spaces and capitalize first letter of each word
+    return withoutOrg
+      .replace(/-/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+  
   return (
     <div
       className={`bg-white rounded-lg shadow-lg border p-6 ${
@@ -26,7 +38,9 @@ const GenerationCard = ({ index, generation, isSelected, hasVoted, onVote }: Gen
       }`}
     >
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold">Model {index + 1}</h3>
+        <h3 className="text-xl font-bold">
+          {hasVoted ? formatModelName(generation.model_name) : `Model ${index + 1}`}
+        </h3>
       </div>
 
       <div className="bg-gray-800 rounded-md mb-6">
