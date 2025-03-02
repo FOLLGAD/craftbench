@@ -357,7 +357,7 @@ serve(async (req) => {
 		const supabase = createSupabaseClient();
 
 		// Randomly select two different models
-		const modelChoices = selectRandomModels();
+		const modelChoices = await selectRandomModels();
 
 		// Generate code with both models concurrently with no timeouts
 		try {
