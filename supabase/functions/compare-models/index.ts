@@ -99,13 +99,13 @@ serve(async (req) => {
       }
     };
 
-    // Create the minecraft-specific system prompt
-    const systemPrompt = `You write minecraft voxel scenes. You only provide pure Javascript code without code fences or explanations. The functions setBlock(x, y, z, "material") and fill(x1, y1, z1, x2, y2, z2, "material") are used to place blocks in the world.
+    // Create the minecraft-specific system prompt with explicit instruction about format
+    const systemPrompt = `You write minecraft voxel scenes. You MUST provide pure Javascript code without code fences, explanations, or any other text - only JavaScript code. The functions setBlock(x, y, z, "material") and fill(x1, y1, z1, x2, y2, z2, "material") are used to place blocks in the world.
 
 Your materials are:
 ${AVAILABLE_MATERIALS.join(", ")}
 
-You can be creative`;
+You can be creative, but remember: respond ONLY with plain JavaScript code and nothing else.`;
 
     // Generate code with both models with timeout
     const generateCode = async (modelId) => {
