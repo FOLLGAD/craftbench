@@ -55,15 +55,26 @@ const Compare = () => {
         throw new Error(functionError.message || "Failed to generate code");
       }
 
-      if (!data || !data.generations || data.generations.length !== 2 || !data.comparison) {
+      if (!data || !data.generations || data.generations.length !== 2) {
         throw new Error("Invalid response from server");
       }
 
-      console.log("Received generations:", data.generations);
-      console.log("Received comparison:", data.comparison);
+      console.log("Received data:", data);
+      
+      // Create a local comparison object if one doesn't exist in the response
+      let comparisonObj = data.comparison;
+      if (!comparisonObj) {
+        comparisonObj = {
+          id: `local-comparison-${Date.now()}`,
+          generation_a_id: data.generations[0].id,
+          generation_b_id: data.generations[1].id,
+          prompt: prompt
+        };
+        console.log("Created local comparison:", comparisonObj);
+      }
       
       setGenerations(data.generations);
-      setComparison(data.comparison);
+      setComparison(comparisonObj);
       setShuffledOrder(data.shuffledOrder || [0, 1]);
       toast.success("Generated code from two models!");
     } catch (error) {
@@ -82,16 +93,18 @@ const Compare = () => {
     try {
       console.log("Voting for comparison:", comparisonId, "with choice:", index + 1);
       
+      // Get the selected generation's ID
+      const selectedGenId = generations[shuffledOrder[index]].id;
+      
       const { error } = await supabase
         .from("mc-votes")
-        .insert([
-          {
-            comparison_id: comparisonId,
-            vote: index + 1,
-            // The user ID will be automatically set to auth.uid() for logged-in users
-            // or null for anonymous users due to the default we set in the migration
-          }
-        ]);
+        .insert({
+          comparison_id: comparisonId,
+          generation_id: selectedGenId, // This is still required by the database
+          vote: index + 1
+          // The user_id will be automatically set to auth.uid() for logged-in users
+          // or null for anonymous users due to the default we set in the migration
+        });
 
       if (error) {
         console.error("Vote error:", error);
