@@ -1,5 +1,8 @@
+
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
+import { Trophy } from "lucide-react";
+
 const Header = () => {
   const navigate = useNavigate();
   return <header className="bg-white shadow-sm border-b border-gray-200 py-4 px-6">
@@ -11,7 +14,8 @@ const Header = () => {
 					<span className="hidden md:inline-block text-sm text-gray-500 ml-4">Best AI benchmark – compare LLMs on spatiovisual tasks</span>
 				</div>
 
-				<Button variant="outline" onClick={() => navigate("/leaderboard")}>
+				<Button onClick={() => navigate("/leaderboard")}>
+					<Trophy className="mr-2 h-4 w-4" />
 					Leaderboard
 				</Button>
 			</div>
