@@ -93,27 +93,6 @@ serve(async (req) => {
     const modelChoices = Array.from(modelIndexes).map(index => MODEL_OPTIONS[index]);
     console.log(`Using models: ${modelChoices[0]} and ${modelChoices[1]}`);
 
-    // Set a timeout for the fetch requests
-    const FETCH_TIMEOUT = 8000; // 8 seconds
-
-    // Function to fetch with timeout
-    const fetchWithTimeout = async (url, options, timeout) => {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      
-      try {
-        const response = await fetch(url, {
-          ...options,
-          signal: controller.signal
-        });
-        clearTimeout(id);
-        return response;
-      } catch (error) {
-        clearTimeout(id);
-        throw error;
-      }
-    };
-
     // Create the minecraft-specific system prompt with explicit instruction about format
     const systemPrompt = `You write minecraft voxel scenes. You MUST provide pure Javascript code without code fences, explanations, or any other text - only JavaScript code. If you use code fences or markdown, I will be unable to use your response.
 
@@ -122,11 +101,11 @@ ${AVAILABLE_MATERIALS.join(", ")}
 
 You can be creative, but remember: respond ONLY with plain JavaScript code and nothing else.`;
 
-    // Generate code with both models with timeout
+    // Generate code with both models with no timeout
     const generateCode = async (modelId) => {
       try {
         console.log(`Starting generation with ${modelId}`);
-        const response = await fetchWithTimeout(
+        const response = await fetch(
           "https://openrouter.ai/api/v1/chat/completions",
           {
             method: "POST",
@@ -150,8 +129,7 @@ You can be creative, but remember: respond ONLY with plain JavaScript code and n
                 max_tokens: 1000
               }
             }),
-          },
-          FETCH_TIMEOUT
+          }
         );
 
         // Log the full response
@@ -250,43 +228,54 @@ You can be creative, but remember: respond ONLY with plain JavaScript code and n
       }
     };
 
-    // Run generation for both models concurrently with timeouts
-    const [generation1, generation2] = await Promise.all([
-      generateCode(modelChoices[0]),
-      generateCode(modelChoices[1])
-    ]);
-
-    const generations = [generation1, generation2];
-    const shuffledOrder = Math.random() > 0.5 ? [0, 1] : [1, 0];
-
-    // Store the comparison in the database
+    // Run generation for both models concurrently with no timeouts
     try {
-      const { error: comparisonError } = await supabase
-        .from("mc-comparisons")
-        .insert({
-          generation_a_id: generation1.id,
-          generation_b_id: generation2.id,
-          prompt
-        });
+      const [generation1, generation2] = await Promise.all([
+        generateCode(modelChoices[0]),
+        generateCode(modelChoices[1])
+      ]);
 
-      if (comparisonError) {
-        console.error("Comparison insert error:", comparisonError);
-      } else {
-        console.log("Comparison stored successfully");
+      const generations = [generation1, generation2];
+      const shuffledOrder = Math.random() > 0.5 ? [0, 1] : [1, 0];
+
+      // Store the comparison in the database
+      try {
+        const { error: comparisonError } = await supabase
+          .from("mc-comparisons")
+          .insert({
+            generation_a_id: generation1.id,
+            generation_b_id: generation2.id,
+            prompt
+          });
+
+        if (comparisonError) {
+          console.error("Comparison insert error:", comparisonError);
+        } else {
+          console.log("Comparison stored successfully");
+        }
+      } catch (error) {
+        console.error("Error storing comparison:", error);
       }
+
+      return new Response(
+        JSON.stringify({ 
+          generations,
+          shuffledOrder
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
     } catch (error) {
-      console.error("Error storing comparison:", error);
+      console.error("Error generating with models:", error);
+      return new Response(
+        JSON.stringify({ error: error.message || "Failed to generate code with models" }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
     }
-
-    return new Response(
-      JSON.stringify({ 
-        generations,
-        shuffledOrder
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      }
-    );
   } catch (error) {
     console.error("Error in compare-models function:", error);
     return new Response(
