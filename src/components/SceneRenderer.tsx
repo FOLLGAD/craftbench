@@ -1,6 +1,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 interface SceneRendererProps {
   code: string;
@@ -26,271 +28,261 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    let handleResize;
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb); // Sky blue background
     
-    // Import Three.js dynamically to avoid SSR issues
-    import('three').then(THREE => {
-      import('three/examples/jsm/controls/OrbitControls.js').then(({ OrbitControls }) => {
-        // Scene setup
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // Sky blue background
-        
-        // Camera
-        const camera = new THREE.PerspectiveCamera(
-          75,
-          window.innerWidth / window.innerHeight,
-          0.1,
-          1000
-        );
-        camera.position.set(10, 10, 10);
-        camera.lookAt(0, 0, 0);
-        
-        // Renderer
-        const renderer = new THREE.WebGLRenderer({
-          canvas: canvasRef.current,
-          antialias: true
-        });
-        renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        
-        // Controls
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(5, 10, 7.5);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 1024;
-        directionalLight.shadow.mapSize.height = 1024;
-        scene.add(directionalLight);
-        
-        // Grid helper removed from here
-        
-        // Pre-generated normal maps for each block type
-        const normalMaps = new Map();
-        
-        // Function to generate normal maps with different characteristics
-        const generateNormalMap = (color: number, pattern: 'noise' | 'grid' | 'smooth' | 'rough' | 'bumpy' = 'noise', intensity: number = 0.5) => {
-          const canvas = document.createElement('canvas');
-          canvas.width = 256;
-          canvas.height = 256;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return null;
+    // Camera
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(10, 10, 10);
+    camera.lookAt(0, 0, 0);
+    
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({
+      canvas: canvasRef.current,
+      antialias: true
+    });
+    renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 10, 7.5);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    scene.add(directionalLight);
+    
+    // Grid helper removed from here
+    const normalMaps = new Map();
+    
+    // Function to generate normal maps with different characteristics
+    const generateNormalMap = (color: number, pattern: 'noise' | 'grid' | 'smooth' | 'rough' | 'bumpy' = 'noise', intensity: number = 0.5) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      
+      // Fill with base color
+      ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+      ctx.fillRect(0, 0, 256, 256);
+      
+      // Add pattern based on type
+      switch(pattern) {
+        case 'grid':
+          // Create grid pattern with higher contrast for normal maps
+          const gridSize = 32;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${intensity * 0.9})`;
+          ctx.lineWidth = 3;
           
-          // Fill with base color
-          ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-          ctx.fillRect(0, 0, 256, 256);
-          
-          // Add pattern based on type
-          switch(pattern) {
-            case 'grid':
-              // Create grid pattern with higher contrast for normal maps
-              const gridSize = 32;
-              ctx.strokeStyle = `rgba(255, 255, 255, ${intensity * 0.9})`;
-              ctx.lineWidth = 3;
-              
-              for (let i = 0; i <= 256; i += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i, 256);
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.moveTo(0, i);
-                ctx.lineTo(256, i);
-                ctx.stroke();
-              }
-              
-              // Add embossed effect for better normal map appearance
-              const imageData = ctx.getImageData(0, 0, 256, 256);
-              const imageDataArray = imageData.data;
-              
-              // Create embossed effect by manipulating neighboring pixels
-              const tempCanvas = document.createElement('canvas');
-              tempCanvas.width = 256;
-              tempCanvas.height = 256;
-              const tempCtx = tempCanvas.getContext('2d');
-              if (tempCtx) {
-                tempCtx.putImageData(imageData, 0, 0);
-                
-                // Apply emboss-like filter
-                ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-                ctx.fillRect(0, 0, 256, 256);
-                
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-                ctx.shadowBlur = 2;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-                ctx.drawImage(tempCanvas, 0, 0);
-                
-                ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-                ctx.shadowOffsetX = -2;
-                ctx.shadowOffsetY = -2;
-                ctx.drawImage(tempCanvas, 0, 0);
-              }
-              break;
-              
-            case 'rough':
-              // Create rough texture with jagged lines
-              ctx.strokeStyle = `rgba(0, 0, 0, ${intensity * 0.7})`;
-              ctx.lineWidth = 2;
-              
-              for (let i = 0; i < 20; i++) {
-                ctx.beginPath();
-                let x = 0;
-                let y = Math.random() * 256;
-                ctx.moveTo(x, y);
-                
-                while (x < 256) {
-                  x += Math.random() * 20;
-                  y += (Math.random() - 0.5) * 40;
-                  ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-              }
-              break;
-              
-            case 'bumpy':
-              // Create bumpy texture with circles
-              for (let i = 0; i < 100; i++) {
-                const x = Math.random() * 256;
-                const y = Math.random() * 256;
-                const radius = 5 + Math.random() * 15;
-                const brightness = 50 + Math.random() * 150;
-                
-                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, ${intensity})`);
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
-              }
-              break;
-              
-            case 'smooth':
-              // Create smooth gradients
-              for (let i = 0; i < 10; i++) {
-                const x1 = Math.random() * 256;
-                const y1 = Math.random() * 256;
-                const x2 = Math.random() * 256;
-                const y2 = Math.random() * 256;
-                const r = 50 + Math.random() * 206;
-                
-                const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-                gradient.addColorStop(0, `rgba(${r}, ${r}, ${r}, 0)`);
-                gradient.addColorStop(0.5, `rgba(${r}, ${r}, ${r}, ${intensity * 0.5})`);
-                gradient.addColorStop(1, `rgba(${r}, ${r}, ${r}, 0)`);
-                
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 256, 256);
-              }
-              break;
-              
-            case 'noise':
-            default:
-              // Add randomized noise for normal map
-              const pixels = ctx.getImageData(0, 0, 256, 256);
-              const pixelData = pixels.data;
-              
-              for (let i = 0; i < pixelData.length; i += 4) {
-                const noise = Math.random() * intensity * 100;
-                pixelData[i] = Math.min(255, pixelData[i] + noise);     // r
-                pixelData[i+1] = Math.min(255, pixelData[i+1] + noise); // g
-                pixelData[i+2] = Math.min(255, pixelData[i+2] + noise); // b
-              }
-              
-              ctx.putImageData(pixels, 0, 0);
-              
-              // Add some additional dots for texture
-              for (let i = 0; i < 5000; i++) {
-                const x = Math.random() * 256;
-                const y = Math.random() * 256;
-                const radius = 1 + Math.random() * 2;
-                const brightness = Math.random() * 40;
-                
-                ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness + 128}, ${intensity * 0.5})`;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
-              }
-              break;
+          for (let i = 0; i <= 256; i += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 256);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(256, i);
+            ctx.stroke();
           }
           
-          return new THREE.CanvasTexture(canvas);
-        };
-        
-        // Pre-generate normal maps for each block type
-        normalMaps.set('grass', generateNormalMap(0x3bca2b, 'bumpy', 0.7));
-        normalMaps.set('stone', generateNormalMap(0x969696, 'rough', 0.9));
-        normalMaps.set('dirt', generateNormalMap(0x8b4513, 'noise', 0.8));
-        normalMaps.set('wood', generateNormalMap(0x8b4513, 'grid', 0.6));
-        normalMaps.set('water', generateNormalMap(0x1e90ff, 'smooth', 0.3));
-        normalMaps.set('sand', generateNormalMap(0xffef8f, 'noise', 0.5));
-        normalMaps.set('glass', generateNormalMap(0xffffff, 'smooth', 0.2));
-        normalMaps.set('gold', generateNormalMap(0xFFD700, 'bumpy', 0.8));
-        normalMaps.set('cobblestone', generateNormalMap(0x555555, 'rough', 1.0));
-        normalMaps.set('brick', generateNormalMap(0xb22222, 'grid', 0.8));
-        normalMaps.set('leaves', generateNormalMap(0x2d8c24, 'bumpy', 0.6));
-        normalMaps.set('bedrock', generateNormalMap(0x221F26, 'rough', 1.0));
-        
-        // Add normal maps for the remaining materials
-        normalMaps.set('lava', generateNormalMap(0xFF4500, 'smooth', 0.9));
-        normalMaps.set('gravel', generateNormalMap(0x777777, 'rough', 0.8));
-        normalMaps.set('iron', generateNormalMap(0xCCCCCC, 'bumpy', 0.7));
-        normalMaps.set('diamond', generateNormalMap(0x00FFFF, 'bumpy', 0.9));
-        normalMaps.set('emerald', generateNormalMap(0x50C878, 'bumpy', 0.8));
-        normalMaps.set('obsidian', generateNormalMap(0x1A1A1A, 'rough', 0.9));
-        normalMaps.set('snow', generateNormalMap(0xFFFFFF, 'noise', 0.4));
-        normalMaps.set('ice', generateNormalMap(0xADD8E6, 'smooth', 0.2));
-        normalMaps.set('clay', generateNormalMap(0xB2B2B2, 'noise', 0.6));
-        normalMaps.set('wool', generateNormalMap(0xF5F5F5, 'noise', 0.5));
-        
-        // Store scene reference
-        sceneRef.current = { 
-          scene, 
-          camera, 
-          renderer, 
-          controls, 
-          blocks: new Map(), 
-          THREE,
-          normalMaps
-        };
-        
-        // Animation loop
-        const animate = () => {
-          // Store animation frame ID for cleanup
-          const animationFrameId = requestAnimationFrame(animate);
-          sceneRef.current!.animationFrameId = animationFrameId;
+          // Add embossed effect for better normal map appearance
+          const imageData = ctx.getImageData(0, 0, 256, 256);
+          const imageDataArray = imageData.data;
           
-          controls.update();
-          renderer.render(scene, camera);
-        };
-        
-        animate();
-        
-        // Handle window resize
-        handleResize = () => {
-          if (!canvasRef.current) return;
-          camera.aspect = window.innerWidth / window.innerHeight;
-          camera.updateProjectionMatrix();
-          renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-        };
-        
-        window.addEventListener('resize', handleResize);
+          // Create embossed effect by manipulating neighboring pixels
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = 256;
+          tempCanvas.height = 256;
+          const tempCtx = tempCanvas.getContext('2d');
+          if (tempCtx) {
+            tempCtx.putImageData(imageData, 0, 0);
+            
+            // Apply emboss-like filter
+            ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+            ctx.fillRect(0, 0, 256, 256);
+            
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 2;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.drawImage(tempCanvas, 0, 0);
+            
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowOffsetX = -2;
+            ctx.shadowOffsetY = -2;
+            ctx.drawImage(tempCanvas, 0, 0);
+          }
+          break;
+          
+        case 'rough':
+          // Create rough texture with jagged lines
+          ctx.strokeStyle = `rgba(0, 0, 0, ${intensity * 0.7})`;
+          ctx.lineWidth = 2;
+          
+          for (let i = 0; i < 20; i++) {
+            ctx.beginPath();
+            let x = 0;
+            let y = Math.random() * 256;
+            ctx.moveTo(x, y);
+            
+            while (x < 256) {
+              x += Math.random() * 20;
+              y += (Math.random() - 0.5) * 40;
+              ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+          break;
+          
+        case 'bumpy':
+          // Create bumpy texture with circles
+          for (let i = 0; i < 100; i++) {
+            const x = Math.random() * 256;
+            const y = Math.random() * 256;
+            const radius = 5 + Math.random() * 15;
+            const brightness = 50 + Math.random() * 150;
+            
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            gradient.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, ${intensity})`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+          
+        case 'smooth':
+          // Create smooth gradients
+          for (let i = 0; i < 10; i++) {
+            const x1 = Math.random() * 256;
+            const y1 = Math.random() * 256;
+            const x2 = Math.random() * 256;
+            const y2 = Math.random() * 256;
+            const r = 50 + Math.random() * 206;
+            
+            const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+            gradient.addColorStop(0, `rgba(${r}, ${r}, ${r}, 0)`);
+            gradient.addColorStop(0.5, `rgba(${r}, ${r}, ${r}, ${intensity * 0.5})`);
+            gradient.addColorStop(1, `rgba(${r}, ${r}, ${r}, 0)`);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 256, 256);
+          }
+          break;
+          
+        case 'noise':
+        default:
+          // Add randomized noise for normal map
+          const pixels = ctx.getImageData(0, 0, 256, 256);
+          const pixelData = pixels.data;
+          
+          for (let i = 0; i < pixelData.length; i += 4) {
+            const noise = Math.random() * intensity * 100;
+            pixelData[i] = Math.min(255, pixelData[i] + noise);     // r
+            pixelData[i+1] = Math.min(255, pixelData[i+1] + noise); // g
+            pixelData[i+2] = Math.min(255, pixelData[i+2] + noise); // b
+          }
+          
+          ctx.putImageData(pixels, 0, 0);
+          
+          // Add some additional dots for texture
+          for (let i = 0; i < 5000; i++) {
+            const x = Math.random() * 256;
+            const y = Math.random() * 256;
+            const radius = 1 + Math.random() * 2;
+            const brightness = Math.random() * 40;
+            
+            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness + 128}, ${intensity * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+      }
+      
+      return new THREE.CanvasTexture(canvas);
+    };
+    
+    // Pre-generate normal maps for each block type
+    normalMaps.set('grass', generateNormalMap(0x3bca2b, 'bumpy', 0.7));
+    normalMaps.set('stone', generateNormalMap(0x969696, 'rough', 0.9));
+    normalMaps.set('dirt', generateNormalMap(0x8b4513, 'noise', 0.8));
+    normalMaps.set('wood', generateNormalMap(0x8b4513, 'grid', 0.6));
+    normalMaps.set('water', generateNormalMap(0x1e90ff, 'smooth', 0.3));
+    normalMaps.set('sand', generateNormalMap(0xffef8f, 'noise', 0.5));
+    normalMaps.set('glass', generateNormalMap(0xffffff, 'smooth', 0.2));
+    normalMaps.set('gold', generateNormalMap(0xFFD700, 'bumpy', 0.8));
+    normalMaps.set('cobblestone', generateNormalMap(0x555555, 'rough', 1.0));
+    normalMaps.set('brick', generateNormalMap(0xb22222, 'grid', 0.8));
+    normalMaps.set('leaves', generateNormalMap(0x2d8c24, 'bumpy', 0.6));
+    normalMaps.set('bedrock', generateNormalMap(0x221F26, 'rough', 1.0));
+    
+    // Add normal maps for the remaining materials
+    normalMaps.set('lava', generateNormalMap(0xFF4500, 'smooth', 0.9));
+    normalMaps.set('gravel', generateNormalMap(0x777777, 'rough', 0.8));
+    normalMaps.set('iron', generateNormalMap(0xCCCCCC, 'bumpy', 0.7));
+    normalMaps.set('diamond', generateNormalMap(0x00FFFF, 'bumpy', 0.9));
+    normalMaps.set('emerald', generateNormalMap(0x50C878, 'bumpy', 0.8));
+    normalMaps.set('obsidian', generateNormalMap(0x1A1A1A, 'rough', 0.9));
+    normalMaps.set('snow', generateNormalMap(0xFFFFFF, 'noise', 0.4));
+    normalMaps.set('ice', generateNormalMap(0xADD8E6, 'smooth', 0.2));
+    normalMaps.set('clay', generateNormalMap(0xB2B2B2, 'noise', 0.6));
+    normalMaps.set('wool', generateNormalMap(0xF5F5F5, 'noise', 0.5));
+    
+    // Store scene reference
+    sceneRef.current = { 
+      scene, 
+      camera, 
+      renderer, 
+      controls, 
+      blocks: new Map(), 
+      THREE,
+      normalMaps
+    };
+    
+    // Animation loop
+    const animate = () => {
+      // Store animation frame ID for cleanup
+      const animationFrameId = requestAnimationFrame(animate);
+      sceneRef.current!.animationFrameId = animationFrameId;
+      
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    
+    animate();
+    
+    // Handle window resize
+    const handleResize = () => {
+      if (!canvasRef.current) return;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+    };
+    
+    window.addEventListener('resize', handleResize);
 
-        setInited(true);
-        
-      });
-    });
+    setInited(true);
     
     // Cleanup function for useEffect
     return () => {
