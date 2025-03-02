@@ -14,7 +14,7 @@ import type { Comparison } from "@/types/comparison";
 
 const Vote = () => {
 	const navigate = useNavigate();
-	const { votedComparisons, handleVote } = useVote();
+	const { votedComparisons } = useVote();
 	const [currentComparisonId, setCurrentComparisonId] = useState<string | null>(
 		null,
 	);
@@ -55,14 +55,6 @@ const Vote = () => {
 		const randomComparison = comparisons[randomIndex];
 		setCurrentComparisonId(randomComparison.id);
 	}, []);
-
-	// Handle vote submission
-	const handleVoteSubmission = async (
-		comparisonId: string,
-		generationId: string,
-	) => {
-		handleVote(comparisonId, generationId);
-	};
 
 	// Fetch another random unvoted comparison
 	const handleNext = () => {
@@ -134,11 +126,7 @@ const Vote = () => {
 			</div>
 
 			{currentComparison ? (
-				<VoteComparison
-					comparison={currentComparison}
-					onVote={handleVoteSubmission}
-					hasVoted={votedComparisons.has(currentComparison.id)}
-				/>
+				<VoteComparison comparison={currentComparison} />
 			) : (
 				<div className="mt-6 text-center">
 					<p className="text-gray-600 mb-4">

@@ -2,100 +2,70 @@ import SceneRenderer from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import type { Comparison } from "@/types/comparison";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ThumbsUp } from "lucide-react";
+import { useState } from "react";
+import {
+	getComparison,
+	getComparisonVotes,
+	getModelRatings,
+	getVote,
+} from "../../lib/models";
 
 interface VoteComparisonProps {
-	comparison: Comparison;
-	onVote: (comparisonId: string, generationId: string) => void;
-	hasVoted: boolean;
+	comparisonId: string;
 	isVoting?: boolean;
 }
 
-const getVote = async (comparisonId: string, userId: string) => {
-	const { data, error } = await supabase
-		.from("mc-votes")
-		.select("generation_id")
-		.eq("comparison_id", comparisonId)
-		.eq("user_id", userId);
-	if (error) {
-		throw new Error(error.message);
-	}
-	return {
-		generationId: data[0]?.generation_id,
-	};
-};
-
-const getComparisonVotes = async (comparison: Comparison) => {
-	const { data, error } = await supabase
-		.from("mc-votes")
-		.select("generation_id")
-		.eq("comparison_id", comparison.id);
-	if (error) {
-		throw new Error(error.message);
-	}
-	const votes = data.reduce(
-		(acc, vote) => {
-			acc[vote.generation_id] = (acc[vote.generation_id] || 0) + 1;
-			return acc;
-		},
-		{} as Record<string, number>,
-	);
-	return votes;
-};
-
-const getComparison = async (comparisonId: string) => {
-	const { data, error } = await supabase
-		.from("mc-comparisons")
-		.select(`*,
-      generation_a:"mc-generations"!generation_a_id(*),
-      generation_b:"mc-generations"!generation_b_id(*)
-    `)
-		.eq("id", comparisonId);
-	if (error) {
-		throw new Error(error.message);
-	}
-	return data[0];
-};
-
-const getModelRatings = async (modelNames: string[]) => {
-	if (!modelNames.length) return {};
-
-	const { data, error } = await supabase
-		.from("mc-models")
-		.select("model_name, elo")
-		.in("model_name", modelNames);
-
-	if (error) {
-		throw new Error(error.message);
-	}
-
-	return data.reduce(
-		(acc, model) => {
-			acc[model.model_name] = model.elo;
-			return acc;
-		},
-		{} as Record<string, number>,
-	);
-};
-
 const VoteComparison = ({
-	comparison: c,
-	onVote,
-	hasVoted,
-	isVoting = false,
+	comparisonId,
+	isVoting: externalIsVoting = false,
 }: VoteComparisonProps) => {
+	const queryClient = useQueryClient();
+	const [isVoting, setIsVoting] = useState(externalIsVoting);
+
 	const { data: voteData } = useQuery({
-		queryKey: ["vote", c.id, hasVoted ? "voted" : "not-voted"],
+		queryKey: ["vote", comparisonId],
 		queryFn: async () => {
 			const { data } = await supabase.auth.getUser();
 			if (!data?.user?.id) return { generationId: null };
-			return getVote(c.id, data.user.id);
+			return getVote(comparisonId, data.user.id);
 		},
 		enabled: true,
 	});
 	const myVote = voteData?.generationId;
+	const hasVoted = !!myVote;
+
+	const onVote = async (comparisonId: string, generationId: string) => {
+		try {
+			setIsVoting(true);
+			const { data } = await supabase.auth.getUser();
+			if (!data?.user?.id) {
+				alert("You must be logged in to vote");
+				return;
+			}
+
+			const { error } = await supabase.from("mc-votes").insert({
+				comparison_id: comparisonId,
+				generation_id: generationId,
+				user_id: data.user.id,
+				vote: 1,
+			});
+
+			if (error) throw error;
+
+			// Invalidate queries to refresh data
+			queryClient.invalidateQueries({ queryKey: ["vote", comparisonId] });
+			queryClient.invalidateQueries({
+				queryKey: ["comparison-votes", comparisonId],
+			});
+		} catch (error) {
+			console.error("Error voting:", error);
+			alert("Failed to submit vote");
+		} finally {
+			setIsVoting(false);
+		}
+	};
 
 	// Format the model name to be more readable
 	const formatModelName = (modelName: string) => {
@@ -103,13 +73,13 @@ const VoteComparison = ({
 	};
 
 	const comparison = useQuery({
-		queryKey: ["comparison", c.id],
-		queryFn: () => getComparison(c.id),
+		queryKey: ["comparison", comparisonId],
+		queryFn: () => getComparison(comparisonId),
 	});
 
 	const comparisonVotes = useQuery({
-		queryKey: ["comparison-votes", c.id, hasVoted ? "voted" : "not-voted"],
-		queryFn: () => getComparisonVotes(c),
+		queryKey: ["comparison-votes", comparisonId],
+		queryFn: () => getComparisonVotes(comparisonId),
 	});
 
 	const generations = [
@@ -121,7 +91,7 @@ const VoteComparison = ({
 	const modelRatings = useQuery({
 		queryKey: ["model-ratings", ...modelNames],
 		queryFn: () => getModelRatings(modelNames),
-		enabled: !!modelNames.length && hasVoted,
+		enabled: !!modelNames.length && !!myVote,
 	});
 
 	const totalVotes = Object.values(comparisonVotes.data || {}).reduce(
@@ -138,7 +108,9 @@ const VoteComparison = ({
 	return (
 		<div className="mb-8">
 			<div className="mb-6 p-4 py-0">
-				<p className="text-gray-700 text-2xl font-semibold">{c.prompt}</p>
+				<p className="text-gray-700 text-2xl font-semibold">
+					{comparison.data?.prompt}
+				</p>
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -180,7 +152,7 @@ const VoteComparison = ({
 						</div>
 
 						<Button
-							onClick={() => onVote(c.id, generation.id)}
+							onClick={() => onVote(comparisonId, generation.id)}
 							disabled={hasVoted || isVoting}
 							variant={myVote ? "default" : "outline"}
 							className={`w-full ${myVote === generation.id ? "bg-green-600 hover:bg-green-700" : ""}`}

@@ -266,7 +266,6 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
 					clearTimeout(timeoutId);
 					worker.terminate();
 					URL.revokeObjectURL(workerUrl);
-					toast.success("Code executed successfully");
 				} else if (data.action === "error") {
 					clearTimeout(timeoutId);
 					worker.terminate();
