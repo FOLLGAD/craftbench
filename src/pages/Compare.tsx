@@ -22,6 +22,15 @@ interface Comparison {
   prompt: string;
 }
 
+// Function to generate a proper UUID v4
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const Compare = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -65,7 +74,7 @@ const Compare = () => {
       let comparisonObj = data.comparison;
       if (!comparisonObj) {
         comparisonObj = {
-          id: `local-comparison-${Date.now()}`,
+          id: generateUUID(), // Use our UUID generator function
           generation_a_id: data.generations[0].id,
           generation_b_id: data.generations[1].id,
           prompt: prompt
