@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -13,6 +14,7 @@ interface SceneRef {
   blocks: Map<string, any>;
   THREE: any;
   normalMaps: Map<string, any>;
+  animationFrameId?: number; // Added to track animation frame
 }
 
 const SceneRenderer = ({ code }: SceneRendererProps) => {
@@ -263,7 +265,10 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
         
         // Animation loop
         const animate = () => {
-          requestAnimationFrame(animate);
+          // Store animation frame ID for cleanup
+          const animationFrameId = requestAnimationFrame(animate);
+          sceneRef.current!.animationFrameId = animationFrameId;
+          
           controls.update();
           renderer.render(scene, camera);
         };
@@ -282,15 +287,74 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
 
         setInited(true);
         
-        // Cleanup
+        // Cleanup function for useEffect
         return () => {
           window.removeEventListener('resize', handleResize);
-          renderer.dispose();
-          controls.dispose();
           
-          // Clean up all meshes from the scene
-          while(scene.children.length > 0){ 
-            scene.remove(scene.children[0]); 
+          // Cancel any pending animation frame
+          if (sceneRef.current && sceneRef.current.animationFrameId) {
+            cancelAnimationFrame(sceneRef.current.animationFrameId);
+          }
+          
+          // Dispose of all geometries and materials to prevent memory leaks
+          if (sceneRef.current) {
+            const { scene, blocks, renderer, controls } = sceneRef.current;
+            
+            // Dispose of all blocks (meshes, geometries, materials)
+            blocks.forEach((mesh) => {
+              if (mesh.geometry) mesh.geometry.dispose();
+              
+              // Check if material is an array
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach((mat) => mat.dispose());
+              } else if (mesh.material) {
+                // Dispose of textures in material
+                if (mesh.material.map) mesh.material.map.dispose();
+                if (mesh.material.normalMap) mesh.material.normalMap.dispose();
+                if (mesh.material.envMap) mesh.material.envMap.dispose();
+                
+                // Dispose of the material itself
+                mesh.material.dispose();
+              }
+              
+              scene.remove(mesh);
+            });
+            
+            // Clear the blocks map
+            blocks.clear();
+            
+            // Dispose of normal maps
+            if (sceneRef.current.normalMaps) {
+              sceneRef.current.normalMaps.forEach((normalMap) => {
+                if (normalMap) normalMap.dispose();
+              });
+              sceneRef.current.normalMaps.clear();
+            }
+            
+            // Clean up all remaining objects from the scene
+            while(scene.children.length > 0) {
+              const object = scene.children[0];
+              
+              // Dispose of geometries and materials where possible
+              if (object.geometry) object.geometry.dispose();
+              
+              if (object.material) {
+                if (Array.isArray(object.material)) {
+                  object.material.forEach(material => material.dispose());
+                } else {
+                  object.material.dispose();
+                }
+              }
+              
+              scene.remove(object);
+            }
+            
+            // Final renderer and controls disposal
+            renderer.dispose();
+            controls.dispose();
+            
+            // Clear the sceneRef to free memory
+            sceneRef.current = null;
           }
         };
       });
