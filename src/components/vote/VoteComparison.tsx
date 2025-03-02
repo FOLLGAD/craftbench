@@ -11,6 +11,8 @@ import {
 	getModelRatings,
 	getVote,
 } from "../../lib/models";
+import { useVote } from "@/hooks/use-vote";
+import { toast } from "sonner";
 
 interface VoteComparisonProps {
 	comparisonId: string;
@@ -23,6 +25,8 @@ const VoteComparison = ({
 }: VoteComparisonProps) => {
 	const queryClient = useQueryClient();
 	const [isVoting, setIsVoting] = useState(externalIsVoting);
+
+	const { handleVote } = useVote();
 
 	const { data: voteData } = useQuery({
 		queryKey: ["vote", comparisonId],
@@ -39,29 +43,15 @@ const VoteComparison = ({
 	const onVote = async (comparisonId: string, generationId: string) => {
 		try {
 			setIsVoting(true);
-			const { data } = await supabase.auth.getUser();
-			if (!data?.user?.id) {
-				alert("You must be logged in to vote");
-				return;
-			}
-
-			const { error } = await supabase.from("mc-votes").insert({
-				comparison_id: comparisonId,
-				generation_id: generationId,
-				user_id: data.user.id,
-				vote: 1,
-			});
-
-			if (error) throw error;
-
-			// Invalidate queries to refresh data
+			await handleVote(comparisonId, generationId);
 			queryClient.invalidateQueries({ queryKey: ["vote", comparisonId] });
 			queryClient.invalidateQueries({
 				queryKey: ["comparison-votes", comparisonId],
 			});
+			toast.success("Vote submitted");
 		} catch (error) {
 			console.error("Error voting:", error);
-			alert("Failed to submit vote");
+			toast.error("Failed to submit vote");
 		} finally {
 			setIsVoting(false);
 		}

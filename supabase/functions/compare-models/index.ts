@@ -144,10 +144,10 @@ async function generateCodeWithModel(
 						},
 						{ role: "user", content: prompt },
 					],
-					max_tokens: 4096,
+					max_tokens: 8096,
 					temperature: 0.7,
 					reasoning: {
-						max_tokens: 1000,
+						max_tokens: 1024,
 					},
 				}),
 			},

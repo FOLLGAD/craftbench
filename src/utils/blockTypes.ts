@@ -61,7 +61,7 @@ export const blockTypes = [
 	},
 	{
 		name: "sandstone",
-		color: 0x8b7500,
+		color: 0xd2b48c,
 		roughness: 1.0,
 		metalness: 0.2,
 		normalScale: new THREE.Vector2(1.2, 1.2),

@@ -1,9 +1,8 @@
 import VoteComparison from "@/components/vote/VoteComparison";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 export default function Compare() {
-	const [searchParams] = useSearchParams();
-	const comparisonId = searchParams.get("comparisonId");
+	const { comparisonId } = useParams();
 
 	return (
 		<div>

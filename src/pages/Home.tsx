@@ -19,6 +19,8 @@ const Home = () => {
 	const [prompt, setPrompt] = useState("");
 	const [currentPage, setCurrentPage] = useState(0);
 
+	const [creatingComparison, setCreatingComparison] = useState(false);
+
 	// Fetch recent comparisons with pagination
 	const {
 		data: comparisons,
@@ -107,12 +109,12 @@ const Home = () => {
 	// Handler for navigation to Compare page
 	const handleCreateComparison = async () => {
 		if (prompt.trim()) {
+			setCreatingComparison(true);
 			const comparison = await generate(prompt);
 			if (comparison) {
-				navigate(`/compare?comparisonId=${comparison.id}`);
+				navigate(`/compare/${comparison.id}`);
 			}
-		} else {
-			navigate("/");
+			setCreatingComparison(false);
 		}
 	};
 
@@ -162,11 +164,12 @@ const Home = () => {
 							<div className="absolute right-0 top-0 bottom-0 h-full flex items-center justify-center pr-1.5">
 								<Button
 									onClick={handleCreateComparison}
-									disabled={!prompt.trim()}
+									disabled={!prompt.trim() || isLoading}
 									className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 rounded-full"
 									aria-label="Generate with models"
 								>
-									<Sparkles className="mr-2" /> Generate
+									<Sparkles className="mr-2" />{" "}
+									{isLoading ? "Generating..." : "Generate"}
 								</Button>
 							</div>
 						</div>

@@ -7,6 +7,7 @@ import { Auth } from "./components/Auth";
 import PostHogProvider from "./components/PostHogProvider";
 import Compare from "./pages/Compare";
 import Home from "./pages/Home";
+import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
 import Playground from "./pages/Playground";
 import Vote from "./pages/Vote";
@@ -23,7 +24,8 @@ const App = () => (
 				<BrowserRouter>
 					<Routes>
 						<Route path="/" element={<Home />} />
-						<Route path="/compare" element={<Compare />} />
+						<Route path="/compare/:comparisonId" element={<Compare />} />
+						<Route path="/leaderboard" element={<Leaderboard />} />
 						<Route path="/playground" element={<Playground />} />
 						<Route path="/vote" element={<Vote />} />
 						{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
