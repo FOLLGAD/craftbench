@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ThumbsUp } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	getComparison,
 	getComparisonVotes,
@@ -72,10 +72,13 @@ const VoteComparison = ({
 		queryFn: () => getComparisonVotes(comparisonId),
 	});
 
-	const generations = [
-		comparison.data?.generation_a,
-		comparison.data?.generation_b,
-	].filter(Boolean);
+	const generations = useMemo(
+		() =>
+			[comparison.data?.generation_a, comparison.data?.generation_b]
+				.filter(Boolean)
+				.sort(() => Math.random() - 0.5),
+		[comparison.data],
+	);
 	const modelNames = generations.map((gen) => gen.model_name);
 
 	const modelRatings = useQuery({

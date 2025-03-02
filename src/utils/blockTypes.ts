@@ -227,7 +227,7 @@ export const blockTypes = [
 	},
 	{
 		name: "red_wool",
-		color: 0xaa0000,
+		color: 0xff0000,
 		roughness: 0.95,
 		metalness: 0.0,
 		normalScale: new THREE.Vector2(0.5, 0.5),

@@ -23,7 +23,10 @@ const SceneRenderer = ({ code }: SceneRendererProps) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const sceneRef = useRef<SceneRef | null>(null);
 	const [inited, setInited] = useState(false);
-	console.log(code);
+
+	useEffect(() => {
+		console.log(code);
+	}, [code]);
 
 	// Initialize Three.js scene
 	useEffect(() => {

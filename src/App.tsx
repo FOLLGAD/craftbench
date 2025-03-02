@@ -27,7 +27,6 @@ const App = () => (
 						<Route path="/compare/:comparisonId" element={<Compare />} />
 						<Route path="/leaderboard" element={<Leaderboard />} />
 						<Route path="/playground" element={<Playground />} />
-						<Route path="/vote" element={<Vote />} />
 						{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
 						<Route path="*" element={<NotFound />} />
 					</Routes>

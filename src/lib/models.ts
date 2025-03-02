@@ -76,16 +76,6 @@ export const getAllModelStats = async () => {
 		throw new Error(modelsError.message);
 	}
 
-	// Get all votes to calculate wins and losses
-	const { data: votes, error: votesError } = await supabase
-		.from("mc-votes")
-		.select("generation_id")
-		.returns<{ generation_id: string }[]>();
-
-	if (votesError) {
-		throw new Error(votesError.message);
-	}
-
 	// Get all generations to map generation_id to model_name
 	const { data: generations, error: generationsError } = await supabase
 		.from("mc-generations")
@@ -101,22 +91,55 @@ export const getAllModelStats = async () => {
 		generationToModel[gen.id] = gen.model_name;
 	}
 
-	// Count votes per model (wins)
-	const modelWins: Record<string, number> = {};
-	for (const vote of votes) {
-		const modelName = generationToModel[vote.generation_id];
-		if (modelName) {
-			modelWins[modelName] = (modelWins[modelName] || 0) + 1;
-		}
-	}
-
-	// Get all comparisons to calculate total matches and losses
+	// Get all comparisons
 	const { data: comparisons, error: comparisonsError } = await supabase
 		.from("mc-comparisons")
-		.select("generation_a_id, generation_b_id");
+		.select("id, generation_a_id, generation_b_id");
 
 	if (comparisonsError) {
 		throw new Error(comparisonsError.message);
+	}
+
+	// Get all votes with comparison_id to determine which model won each comparison
+	const { data: votes, error: votesError } = await supabase
+		.from("mc-votes")
+		.select("comparison_id, generation_id");
+
+	if (votesError) {
+		throw new Error(votesError.message);
+	}
+
+	// Group votes by comparison_id
+	const votesByComparison: Record<string, Record<string, number>> = {};
+	for (const vote of votes) {
+		if (!votesByComparison[vote.comparison_id]) {
+			votesByComparison[vote.comparison_id] = {};
+		}
+		votesByComparison[vote.comparison_id][vote.generation_id] =
+			(votesByComparison[vote.comparison_id][vote.generation_id] || 0) + 1;
+	}
+
+	// Count wins per model (a win is when a model's generation gets more votes in a comparison)
+	const modelWins: Record<string, number> = {};
+	for (const comparison of comparisons) {
+		const comparisonVotes = votesByComparison[comparison.id] || {};
+		const votesForA = comparisonVotes[comparison.generation_a_id] || 0;
+		const votesForB = comparisonVotes[comparison.generation_b_id] || 0;
+
+		// Skip comparisons with no votes or ties
+		if (votesForA === 0 && votesForB === 0) continue;
+		if (votesForA === votesForB) continue;
+
+		// Determine the winning generation and model
+		const winningGenId =
+			votesForA > votesForB
+				? comparison.generation_a_id
+				: comparison.generation_b_id;
+		const winningModel = generationToModel[winningGenId];
+
+		if (winningModel) {
+			modelWins[winningModel] = (modelWins[winningModel] || 0) + 1;
+		}
 	}
 
 	// Calculate total matches per model
@@ -124,11 +147,11 @@ export const getAllModelStats = async () => {
 	for (const comparison of comparisons) {
 		const modelA = generationToModel[comparison.generation_a_id];
 		const modelB = generationToModel[comparison.generation_b_id];
-		
+
 		if (modelA) {
 			modelMatches[modelA] = (modelMatches[modelA] || 0) + 1;
 		}
-		
+
 		if (modelB) {
 			modelMatches[modelB] = (modelMatches[modelB] || 0) + 1;
 		}
@@ -140,7 +163,7 @@ export const getAllModelStats = async () => {
 		const matches = modelMatches[model.model_name] || 0;
 		const losses = matches - wins;
 		const winRate = matches > 0 ? (wins / matches) * 100 : 0;
-		
+
 		return {
 			modelName: model.model_name,
 			elo: model.elo,
