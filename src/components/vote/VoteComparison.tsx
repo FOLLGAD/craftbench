@@ -1,17 +1,19 @@
+
 import SceneRenderer from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { Comparison } from "@/types/comparison";
-import type { User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { ThumbsUp } from "lucide-react";
-import { type DependencyList, useEffect, useState } from "react";
+
 interface VoteComparisonProps {
   comparison: Comparison;
   onVote: (comparisonId: string, generationId: string) => void;
   hasVoted: boolean;
+  isVoting?: boolean;
 }
+
 const getVote = async (comparisonId: string, userId: string) => {
   const {
     data,
@@ -24,17 +26,7 @@ const getVote = async (comparisonId: string, userId: string) => {
     generationId: data[0]?.generation_id
   };
 };
-const useUser = () => {
-  const [user, setUser] = useState<User | null>(null);
-  useEffect(() => {
-    supabase.auth.getUser().then(({
-      data
-    }) => {
-      setUser(data.user);
-    });
-  }, []);
-  return user;
-};
+
 const getComparisonVotes = async (comparison: Comparison) => {
   const {
     data,
@@ -49,6 +41,7 @@ const getComparisonVotes = async (comparison: Comparison) => {
   }, {} as Record<string, number>);
   return votes;
 };
+
 const getComparison = async (comparisonId: string) => {
   const {
     data,
@@ -62,18 +55,41 @@ const getComparison = async (comparisonId: string) => {
   }
   return data[0];
 };
+
+const getModelRatings = async (modelNames: string[]) => {
+  if (!modelNames.length) return {};
+  
+  const { data, error } = await supabase
+    .from("mc-models")
+    .select("model_name, elo")
+    .in("model_name", modelNames);
+    
+  if (error) {
+    throw new Error(error.message);
+  }
+  
+  return data.reduce((acc, model) => {
+    acc[model.model_name] = model.elo;
+    return acc;
+  }, {} as Record<string, number>);
+};
+
 const VoteComparison = ({
   comparison: c,
   onVote,
-  hasVoted
+  hasVoted,
+  isVoting = false
 }: VoteComparisonProps) => {
-  const myUser = useUser();
   const {
     data: voteData
   } = useQuery({
     queryKey: ["vote", c.id, hasVoted ? "voted" : "not-voted"],
-    queryFn: () => getVote(c.id, myUser?.id),
-    enabled: !!myUser
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data?.user?.id) return { generationId: null };
+      return getVote(c.id, data.user.id);
+    },
+    enabled: true
   });
   const myVote = voteData?.generationId;
 
@@ -81,21 +97,34 @@ const VoteComparison = ({
   const formatModelName = (modelName: string) => {
     return modelName;
   };
+  
   const comparison = useQuery({
     queryKey: ["comparison", c.id],
     queryFn: () => getComparison(c.id)
   });
+  
   const comparisonVotes = useQuery({
     queryKey: ["comparison-votes", c.id, hasVoted ? "voted" : "not-voted"],
     queryFn: () => getComparisonVotes(c)
   });
+  
+  const generations = [comparison.data?.generation_a, comparison.data?.generation_b].filter(Boolean);
+  const modelNames = generations.map(gen => gen.model_name);
+  
+  const modelRatings = useQuery({
+    queryKey: ["model-ratings", ...modelNames],
+    queryFn: () => getModelRatings(modelNames),
+    enabled: !!modelNames.length && hasVoted
+  });
+  
   const totalVotes = Object.values(comparisonVotes.data || {}).reduce((sum, count) => sum + count, 0);
+  
   const getVotePercentage = (genId: string) => {
     const voteCount = comparisonVotes.data?.[genId] || 0;
     if (totalVotes === 0) return 0;
     return Math.round(voteCount / totalVotes * 100);
   };
-  const generations = [comparison.data?.generation_a, comparison.data?.generation_b].filter(Boolean);
+  
   return <div className="mb-8">
 			<div className="mb-6 p-4 py-0">
 				
@@ -105,9 +134,16 @@ const VoteComparison = ({
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 				{generations.map((generation, index) => <div key={generation.id} className={`bg-white rounded-lg shadow-lg border p-6 ${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "border-green-500" : "border-gray-200"}`}>
 						<div className="flex justify-between items-center mb-4">
-							<h3 className="text-xl font-bold">
-								{myVote ? formatModelName(generation.model_name) : `Model ${index + 1}`}
-							</h3>
+							<div>
+								<h3 className="text-xl font-bold">
+									{hasVoted ? formatModelName(generation.model_name) : `Model ${index + 1}`}
+								</h3>
+								{hasVoted && modelRatings.data?.[generation.model_name] && (
+									<p className="text-sm text-gray-600">
+										Elo: {modelRatings.data[generation.model_name]}
+									</p>
+								)}
+							</div>
 
 							{hasVoted && <Badge variant={comparisonVotes.data?.[generation.id] > 0 ? "default" : "outline"}>
 									{getVotePercentage(generation.id)}% (
@@ -119,8 +155,8 @@ const VoteComparison = ({
 							<SceneRenderer code={generation.generated_code} />
 						</div>
 
-						<Button onClick={() => onVote(c.id, generation.id)} disabled={hasVoted} variant={hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "default" : "outline"} className={`w-full ${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "bg-green-600 hover:bg-green-700" : ""}`}>
-							{myVote ? <>
+						<Button onClick={() => onVote(c.id, generation.id)} disabled={hasVoted || isVoting} variant={hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "default" : "outline"} className={`w-full ${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "bg-green-600 hover:bg-green-700" : ""}`}>
+							{isVoting ? "Voting..." : myVote ? <>
 									<ThumbsUp className="mr-2 h-5 w-5" /> Voted!
 								</> : "Vote for this generation"}
 						</Button>
@@ -128,4 +164,5 @@ const VoteComparison = ({
 			</div>
 		</div>;
 };
+
 export default VoteComparison;

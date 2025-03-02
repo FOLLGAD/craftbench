@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -6,16 +7,26 @@ export const useVote = () => {
 	const [votedComparisons, setVotedComparisons] = useState<Set<string>>(
 		new Set(),
 	);
+	const [isVoting, setIsVoting] = useState(false);
+
 	const handleVote = async (comparisonId: string, generationId: string) => {
+		if (isVoting) return false;
+		
 		try {
+			setIsVoting(true);
 			console.log("--- Vote Submission Process ---");
 
-			// Step 1: Get the current user ID
-			const { data: userData } = await supabase.auth.getUser();
-			console.log("Initial user check:", userData);
-			console.log("Initial user ID:", userData.user?.id);
-
-			let userId = userData.user?.id;
+			// Step 1: Get the current user session and token
+			const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+			
+			if (sessionError) {
+				console.error("Session error:", sessionError);
+				throw new Error(`Failed to get user session: ${sessionError.message}`);
+			}
+			
+			// We need the user's token for authorization
+			const token = sessionData?.session?.access_token;
+			let userId = sessionData?.session?.user?.id;
 
 			// Step 2: Validate that we have a user ID before proceeding
 			if (!userId) {
@@ -36,10 +47,14 @@ export const useVote = () => {
 					// Log the newly created user
 					console.log("Sign-in response:", signInData);
 					userId = signInData.user?.id;
+					
+					// Get the token from the new session
+					const { data: newSessionData } = await supabase.auth.getSession();
+					const token = newSessionData?.session?.access_token;
 
-					if (!userId) {
+					if (!userId || !token) {
 						throw new Error(
-							"Failed to create user ID for voting - user ID still null after sign-in",
+							"Failed to create user ID for voting - user ID or token still null after sign-in",
 						);
 					}
 
@@ -52,71 +67,41 @@ export const useVote = () => {
 				}
 			}
 
-			// Step 3: Get the latest user ID to be absolutely sure we have it
-			const { data: latestUserData, error: latestUserError } =
-				await supabase.auth.getUser();
-
-			if (latestUserError) {
-				console.error("Error getting latest user:", latestUserError);
-				throw new Error(`Failed to verify user: ${latestUserError.message}`);
-			}
-
-			console.log("Latest user data:", latestUserData);
-			const latestUserId = latestUserData.user?.id;
-
-			if (!latestUserId) {
-				console.error("Latest user ID is still null after all attempts");
-				throw new Error("Unable to get valid user ID for voting");
-			}
-
-			console.log("Final confirmed user ID for voting:", latestUserId);
+			console.log("User ID for voting:", userId);
 			console.log("Comparison ID:", comparisonId);
 			console.log("Generation ID:", generationId);
 
-			// Step 4: Log the current session for debugging
-			const { data: sessionData } = await supabase.auth.getSession();
-			console.log("Current session before voting:", sessionData);
+			// Call the edge function to process the vote and update Elo ratings
+			const response = await supabase.functions.invoke('vote-comparison', {
+				body: { 
+					comparisonId, 
+					generationId 
+				}
+			});
 
-			// Step 5: Insert the vote with the validated user ID
-			console.log("Inserting vote with user ID:", latestUserId);
-			const { data: voteData, error } = await supabase
-				.from("mc-votes")
-				.insert({
-					comparison_id: comparisonId,
-					generation_id: generationId,
-					vote: 1,
-					user_id: latestUserId, // Always use the validated user ID
-				})
-				.select();
-
-			if (error) {
-				console.error("Vote insert error details:", error);
-				throw error;
+			if (response.error) {
+				console.error("Vote function error:", response.error);
+				throw new Error(`Failed to process vote: ${response.error.message}`);
 			}
 
-			console.log("Vote inserted successfully:", voteData);
+			console.log("Vote processed successfully:", response.data);
 
 			// Update local state to mark this comparison as voted
 			setVotedComparisons((prev) => new Set([...prev, comparisonId]));
 
 			toast.success("Vote recorded", {
-				description: "Thanks for your vote!",
+				description: `${response.data.winningModelName} Elo: ${response.data.winnerElo}`,
 			});
 
 			return true;
 		} catch (error) {
 			console.error("Vote error details:", error);
 
-			// Log any specific database error information
-			if (error.code && error.details) {
-				console.error(`Database error code: ${error.code}`);
-				console.error(`Error details: ${error.details}`);
-				console.error(`Error hint: ${error.hint}`);
-			}
-
 			toast.error(`Failed to record vote: ${error.message}`);
 
 			return false;
+		} finally {
+			setIsVoting(false);
 		}
 	};
 
@@ -124,5 +109,6 @@ export const useVote = () => {
 		votedComparisons,
 		setVotedComparisons,
 		handleVote,
+		isVoting,
 	};
 };
