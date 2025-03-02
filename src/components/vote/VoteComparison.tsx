@@ -1,25 +1,25 @@
 import SceneRenderer from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useVote } from "@/hooks/use-vote";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
 	getComparison,
 	getComparisonVotes,
 	getModelRatings,
 	getVote,
 } from "../../lib/models";
-import { useVote } from "@/hooks/use-vote";
-import { toast } from "sonner";
 import {
 	Dialog,
-	DialogHeader,
 	DialogContent,
+	DialogDescription,
+	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-	DialogDescription,
 } from "../ui/dialog";
 import { Textarea } from "../ui/textarea";
 
@@ -109,66 +109,82 @@ const VoteComparison = ({
 
 	const adminCode = localStorage.getItem("admin_code") === "true";
 
+	const winner: string | "tie" = useMemo(() => {
+		const aVotes = comparisonVotes.data?.[generations[0].id] || 0;
+		const bVotes = comparisonVotes.data?.[generations[1].id] || 0;
+		if (aVotes === bVotes) return "tie";
+		return aVotes > bVotes ? generations[0].id : generations[1].id;
+	}, [comparisonVotes.data, generations]);
+
 	return (
-		<div className="mb-8">
-			<div className="mb-6 p-4 py-0">
+		<div className="mb-8 shadow-lg rounded-lg p-4 border border-gray-200 bg-white">
+			<div className="mb-6 py-0 text-center">
 				<p className="text-gray-700 text-2xl font-semibold">
-					{comparison.data?.prompt}
+					"{comparison.data?.prompt.trim()}"
 				</p>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				{generations.map((generation, index) => (
 					<div
 						key={generation.id}
-						className={`bg-white rounded-lg shadow-lg border p-6 ${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "border-green-500" : "border-gray-200"}`}
+						className={`${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "border-green-500" : "border-gray-200"}`}
 					>
-						<div className="flex justify-between items-center mb-4 w-full">
-							<div className="w-full">
+						<div className="flex flex-col justify-between items-center mb-4 w-full">
+							<div className="w-full flex items-center gap-2">
 								<h3 className="text-xl font-bold">
 									{hasVoted
 										? formatModelName(generation.model_name)
 										: `Model ${index + 1}`}
-									{adminCode && (
-										<Dialog>
-											<DialogTrigger asChild>
-												<Button variant="outline">Code</Button>
-											</DialogTrigger>
-											<DialogContent>
-												<DialogHeader>
-													<DialogTitle>Code</DialogTitle>
-												</DialogHeader>
-												<DialogDescription>
-													<Textarea
-														className="w-full h-[300px] resize-none"
-														value={generation.generated_code}
-														readOnly
-													/>
-												</DialogDescription>
-											</DialogContent>
-										</Dialog>
-									)}
 								</h3>
-								{hasVoted && modelRatings.data?.[generation.model_name] && (
-									<div className="flex items-center gap-2 justify-between w-full">
-										<p className="text-sm text-gray-600">
-											Elo: {modelRatings.data[generation.model_name]}
-										</p>
 
-										<Badge
-											variant={
-												comparisonVotes.data?.[generation.id] > 0
-													? "default"
-													: "outline"
-											}
-											className="flex-shrink-0"
-										>
-											{getVotePercentage(generation.id)}% (
-											{comparisonVotes.data?.[generation.id] || 0} votes)
-										</Badge>
-									</div>
+								{winner === generation.id && (
+									<Badge variant="default" className="bg-green-800">
+										Winner
+									</Badge>
+								)}
+
+								{winner === "tie" && <Badge variant="secondary">Tie</Badge>}
+
+								{!!adminCode && (
+									<Dialog>
+										<DialogTrigger asChild>
+											<Button variant="outline">Code</Button>
+										</DialogTrigger>
+										<DialogContent>
+											<DialogHeader>
+												<DialogTitle>Code</DialogTitle>
+											</DialogHeader>
+											<DialogDescription>
+												<Textarea
+													className="w-full h-[300px] resize-none"
+													value={generation.generated_code}
+													readOnly
+												/>
+											</DialogDescription>
+										</DialogContent>
+									</Dialog>
 								)}
 							</div>
+							{hasVoted && modelRatings.data?.[generation.model_name] && (
+								<div className="flex items-center gap-2 justify-between w-full">
+									<p className="text-sm text-gray-600">
+										Elo: {modelRatings.data[generation.model_name]}
+									</p>
+
+									<Badge
+										variant={
+											comparisonVotes.data?.[generation.id] > 0
+												? "default"
+												: "outline"
+										}
+										className="flex-shrink-0"
+									>
+										{getVotePercentage(generation.id)}% (
+										{comparisonVotes.data?.[generation.id] || 0} votes)
+									</Badge>
+								</div>
+							)}
 						</div>
 
 						<div className="bg-gray-800 rounded-md mb-6 h-[300px] overflow-hidden">

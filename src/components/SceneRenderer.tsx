@@ -179,9 +179,6 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		if (!sceneRef.current) return;
 		const { scene, geometries } = sceneRef.current;
 
-		console.log(`Subtracting air block at (${x}, ${y}, ${z})`);
-		console.log(`Current geometries count: ${geometries.length}`);
-
 		// Create air block for subtraction
 		const airGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01); // Slightly larger to ensure complete subtraction
 		const airMesh = new THREE.Mesh(airGeometry);
@@ -209,20 +206,17 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			// Use bounding box intersection check for more accurate detection
 			const meshBoundingBox = existingMesh.geometry.boundingBox;
 			const airBoundingBox = new THREE.Box3().setFromObject(airMesh);
-			
+
 			if (meshBoundingBox && !meshBoundingBox.intersectsBox(airBoundingBox)) {
 				updatedGeometries.push(existingMesh);
 				continue;
 			}
 
 			try {
-				// Perform CSG subtraction
-				console.log(`Attempting to subtract from mesh at position (${existingMesh.position.x}, ${existingMesh.position.y}, ${existingMesh.position.z})`);
-				
 				// Clone the meshes to avoid modifying the originals during CSG operations
 				const meshForCSG = existingMesh.clone();
 				const airMeshForCSG = airMesh.clone();
-				
+
 				const csgResult = CSG.subtract(meshForCSG, airMeshForCSG);
 
 				// If the result is valid, replace the old mesh with the new one
@@ -239,8 +233,6 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 					scene.add(csgResult);
 					updatedGeometries.push(csgResult);
 					subtractionsPerformed++;
-					
-					console.log("CSG subtraction successful");
 				} else {
 					// If subtraction failed, keep the original
 					console.warn("CSG subtraction returned null or invalid geometry");
@@ -252,8 +244,6 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				updatedGeometries.push(existingMesh);
 			}
 		}
-
-		console.log(`Performed ${subtractionsPerformed} successful subtractions`);
 
 		// Update the geometries array
 		sceneRef.current.geometries = updatedGeometries;
@@ -296,10 +286,6 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			z2: number,
 		) => {
 			if (!sceneRef.current) return;
-
-			console.log(`Subtracting air region from (${x1}, ${y1}, ${z1}) to (${x2}, ${y2}, ${z2})`);
-			console.log(`Current geometries count: ${sceneRef.current.geometries.length}`);
-
 			// Ensure x1,y1,z1 is the minimum corner and x2,y2,z2 is the maximum
 			const minX = Math.min(x1, x2);
 			const minY = Math.min(y1, y2);
@@ -348,20 +334,17 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				// Skip if the mesh is too far away (optimization)
 				// Use bounding box intersection check for more accurate detection
 				const meshBoundingBox = existingMesh.geometry.boundingBox;
-				
+
 				if (meshBoundingBox && !meshBoundingBox.intersectsBox(airBoundingBox)) {
 					updatedGeometries.push(existingMesh);
 					continue;
 				}
 
 				try {
-					// Perform CSG subtraction
-					console.log(`Attempting to subtract region from mesh at position (${existingMesh.position.x}, ${existingMesh.position.y}, ${existingMesh.position.z})`);
-					
 					// Clone the meshes to avoid modifying the originals during CSG operations
 					const meshForCSG = existingMesh.clone();
 					const airMeshForCSG = airMesh.clone();
-					
+
 					const csgResult = CSG.subtract(meshForCSG, airMeshForCSG);
 
 					// If the result is valid, replace the old mesh with the new one
@@ -378,11 +361,11 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 						scene.add(csgResult);
 						updatedGeometries.push(csgResult);
 						subtractionsPerformed++;
-						
-						console.log("CSG region subtraction successful");
 					} else {
 						// If subtraction failed, keep the original
-						console.warn("CSG region subtraction returned null or invalid geometry");
+						console.warn(
+							"CSG region subtraction returned null or invalid geometry",
+						);
 						updatedGeometries.push(existingMesh);
 					}
 				} catch (error) {
@@ -391,8 +374,6 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 					updatedGeometries.push(existingMesh);
 				}
 			}
-
-			console.log(`Performed ${subtractionsPerformed} successful region subtractions`);
 
 			// Update the geometries array
 			sceneRef.current.geometries = updatedGeometries;

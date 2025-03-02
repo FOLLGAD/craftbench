@@ -121,14 +121,14 @@ const Home = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-50 flex flex-col">
+		<div className="min-h-screen bg-gray-50 flex flex-col px-1">
 			<Header />
 
-			<main className="container mx-auto px-4 py-8 flex-grow">
+			<main className="md:px-4 py-8 flex-grow flex flex-col">
 				<HeroSection />
 
 				<section>
-					<div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
+					<div className="mb-8">
 						<div className="flex justify-between items-center mb-6">
 							<h2 className="text-2xl font-bold text-gray-800">
 								Recent Comparisons
