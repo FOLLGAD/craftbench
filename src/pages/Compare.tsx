@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,37 +51,6 @@ const Compare = () => {
 
       console.log("Received generations:", data.generations);
       
-      // Store generations in the database to ensure they exist before voting
-      for (const generation of data.generations) {
-        // Check if the generation already exists
-        const { data: existingGen, error: checkError } = await supabase
-          .from("mc-generations")
-          .select("id")
-          .eq("id", generation.id)
-          .maybeSingle();
-          
-        if (checkError) {
-          console.error("Error checking generation:", checkError);
-        }
-        
-        // If generation doesn't exist, insert it
-        if (!existingGen) {
-          const { error: insertError } = await supabase
-            .from("mc-generations")
-            .insert([{
-              id: generation.id,
-              prompt: generation.prompt,
-              model_name: generation.model_name,
-              generated_code: generation.generated_code
-            }]);
-            
-          if (insertError) {
-            console.error("Error inserting generation:", insertError);
-            toast.error("Error storing generation data");
-          }
-        }
-      }
-      
       setGenerations(data.generations);
       setShuffledOrder(data.shuffledOrder || [0, 1]);
       toast.success("Generated code from two models!");
@@ -111,8 +79,6 @@ const Compare = () => {
     try {
       console.log("Voting for generation:", selectedGeneration.id);
       
-      // At this point, the generation should already exist in the database
-      // since we inserted it during the generation step
       const { error } = await supabase
         .from("mc-votes")
         .insert([

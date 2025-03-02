@@ -152,104 +152,101 @@ You can be creative`;
         const generatedCode = data.choices[0]?.message?.content || "// No code generated";
         console.log(`Successfully generated code with ${modelId}`);
 
-        // Create a simplified version of the generation to return quickly
-        const generation = {
-          id: crypto.randomUUID(),
+        // Generate UUID for the new generation
+        const generationId = crypto.randomUUID();
+
+        // Immediately store generation in database and return the ID
+        try {
+          const { error: insertError } = await supabase
+            .from("mc-generations")
+            .insert({
+              id: generationId,
+              prompt,
+              model_name: modelId,
+              generated_code: generatedCode
+            });
+
+          if (insertError) {
+            console.error(`Error storing generation from ${modelId}:`, insertError);
+            throw new Error(`Failed to store generation: ${insertError.message}`);
+          }
+          
+          console.log(`Successfully stored generation ${generationId} from ${modelId}`);
+        } catch (dbError) {
+          console.error(`Database error for ${modelId}:`, dbError);
+          throw new Error(`Database error: ${dbError.message}`);
+        }
+
+        // Return the generation data with the confirmed ID
+        return {
+          id: generationId,
           prompt,
           model_name: modelId,
-          generated_code: generatedCode,
-          created_at: new Date().toISOString()
+          generated_code: generatedCode
         };
-
-        // Store generation in database in the background
-        const storeGeneration = async () => {
-          try {
-            const { data: insertedGeneration, error } = await supabase
-              .from("mc-generations")
-              .insert([
-                {
-                  prompt,
-                  model_name: modelId,
-                  generated_code: generatedCode,
-                }
-              ])
-              .select();
-
-            if (error) {
-              console.error("Supabase insert error:", error);
-              return generation;
-            }
-
-            return insertedGeneration[0] || generation;
-          } catch (dbError) {
-            console.error(`Database error for ${modelId}:`, dbError);
-            return generation;
-          }
-        };
-
-        return { generation, storePromise: storeGeneration() };
       } catch (error) {
         console.error(`Error generating with ${modelId}:`, error);
-        // Return fallback generation
-        return { 
-          generation: {
-            id: crypto.randomUUID(),
-            prompt,
-            model_name: modelId,
-            generated_code: `// Error generating code with ${modelId}: ${error.message}\n// Fallback code\nfill(0, 0, 0, 10, 1, 10, 'stone');\nsetBlock(5, 2, 5, 'gold');`,
-            created_at: new Date().toISOString()
-          },
-          storePromise: Promise.resolve(null) 
+        
+        // Generate UUID for fallback generation
+        const fallbackId = crypto.randomUUID();
+        const fallbackCode = `// Error generating code with ${modelId}: ${error.message}\n// Fallback code\nfill(0, 0, 0, 10, 1, 10, 'stone');\nsetBlock(5, 2, 5, 'gold');`;
+        
+        // Store fallback generation in database
+        try {
+          const { error: insertError } = await supabase
+            .from("mc-generations")
+            .insert({
+              id: fallbackId,
+              prompt,
+              model_name: modelId,
+              generated_code: fallbackCode
+            });
+
+          if (insertError) {
+            console.error(`Error storing fallback generation from ${modelId}:`, insertError);
+          } else {
+            console.log(`Successfully stored fallback generation ${fallbackId} from ${modelId}`);
+          }
+        } catch (dbError) {
+          console.error(`Database error for fallback ${modelId}:`, dbError);
+        }
+        
+        // Return the fallback generation
+        return {
+          id: fallbackId,
+          prompt,
+          model_name: modelId,
+          generated_code: fallbackCode
         };
       }
     };
 
     // Run generation for both models concurrently with timeouts
-    const [result1, result2] = await Promise.all([
+    const [generation1, generation2] = await Promise.all([
       generateCode(modelChoices[0]),
       generateCode(modelChoices[1])
     ]);
 
-    const generations = [result1.generation, result2.generation];
+    const generations = [generation1, generation2];
     const shuffledOrder = Math.random() > 0.5 ? [0, 1] : [1, 0];
 
-    // Store the comparison in the database after we've sent the response
-    const storeComparison = async () => {
-      try {
-        // Wait for stored generations to complete
-        const storedGen1 = await result1.storePromise;
-        const storedGen2 = await result2.storePromise;
-        
-        const genId1 = storedGen1?.id || result1.generation.id;
-        const genId2 = storedGen2?.id || result2.generation.id;
+    // Store the comparison in the database
+    try {
+      const { error: comparisonError } = await supabase
+        .from("mc-comparisons")
+        .insert({
+          generation_a_id: generation1.id,
+          generation_b_id: generation2.id,
+          prompt
+        });
 
-        if (genId1 && genId2) {
-          const { data: comparison, error: comparisonError } = await supabase
-            .from("mc-comparisons")
-            .insert([
-              {
-                generation_a_id: genId1,
-                generation_b_id: genId2,
-                prompt
-              }
-            ])
-            .select();
-
-          if (comparisonError) {
-            console.error("Comparison insert error:", comparisonError);
-          } else {
-            console.log("Comparison stored successfully:", comparison[0]?.id);
-          }
-        }
-      } catch (error) {
-        console.error("Error storing comparison:", error);
+      if (comparisonError) {
+        console.error("Comparison insert error:", comparisonError);
+      } else {
+        console.log("Comparison stored successfully");
       }
-    };
-
-    // Use background processing to store the comparison after response is sent
-    const backgroundPromise = storeComparison();
-    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-      EdgeRuntime.waitUntil(backgroundPromise);
+    } catch (error) {
+      console.error("Error storing comparison:", error);
     }
 
     return new Response(
