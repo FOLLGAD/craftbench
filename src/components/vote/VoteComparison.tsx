@@ -109,11 +109,16 @@ const VoteComparison = ({
 
 	const adminCode = localStorage.getItem("admin_code") === "true";
 
-	const winner: string | "tie" = useMemo(() => {
-		const aVotes = comparisonVotes.data?.[generations[0].id] || 0;
-		const bVotes = comparisonVotes.data?.[generations[1].id] || 0;
+	const winner: string | "tie" | null = useMemo(() => {
+		const genAid = generations[0]?.id;
+		const genBid = generations[1]?.id;
+
+		if (!genAid || !genBid) return null;
+
+		const aVotes = comparisonVotes.data?.[genAid] || 0;
+		const bVotes = comparisonVotes.data?.[genBid] || 0;
 		if (aVotes === bVotes) return "tie";
-		return aVotes > bVotes ? generations[0].id : generations[1].id;
+		return aVotes > bVotes ? genAid : genBid;
 	}, [comparisonVotes.data, generations]);
 
 	return (

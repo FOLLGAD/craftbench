@@ -29,7 +29,7 @@ const Home = () => {
 		error,
 		refetch,
 	} = useQuery({
-		queryKey: ["recent-comparisons", currentPage],
+		queryKey: ["recent-comparisons", currentPage, maxItemsPerPage],
 		queryFn: async (): Promise<Comparison[]> => {
 			// Get paginated comparisons
 			const { data: comparisonData, error: comparisonError } = await supabase
@@ -187,6 +187,19 @@ const Home = () => {
 								))}
 							</div>
 						)}
+					</div>
+				</section>
+
+				<section>
+					<div className="flex justify-center">
+						<Button
+							variant="outline"
+							size="lg"
+							className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white hover:text-white text-xl py-6 px-12"
+							onClick={() => setCurrentPage((c) => c + 1)}
+						>
+							Next
+						</Button>
 					</div>
 				</section>
 			</main>
