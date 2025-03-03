@@ -2,10 +2,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Maximum character limit for prompts
+const MAX_PROMPT_LENGTH = 120;
+
 export const useGenerate = () => {
 	const generateCode = async (prompt: string) => {
 		if (!prompt) {
 			toast.error("Please enter a prompt");
+			return;
+		}
+
+		if (prompt.length > MAX_PROMPT_LENGTH) {
+			toast.error(`Prompt is too long. Please limit to ${MAX_PROMPT_LENGTH} characters.`);
 			return;
 		}
 

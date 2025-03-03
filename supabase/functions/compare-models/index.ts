@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || "";
+const MAX_PROMPT_LENGTH = 120;
 
 // Available materials for the minecraft voxel scenes
 const AVAILABLE_MATERIALS = [
@@ -369,6 +370,19 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Validate prompt length
+    if (prompt.length > MAX_PROMPT_LENGTH) {
+      return new Response(
+        JSON.stringify({ 
+          error: `Prompt exceeds maximum length of ${MAX_PROMPT_LENGTH} characters` 
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     if (!OPENROUTER_API_KEY) {
