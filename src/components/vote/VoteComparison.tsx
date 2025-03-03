@@ -1,4 +1,4 @@
-import SceneRenderer from "@/components/SceneRenderer";
+import { VisibleScreenRenderer } from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useVote } from "@/hooks/use-vote";
@@ -217,7 +217,7 @@ const VoteComparison = ({
 								</div>
 
 								<div className="bg-gray-800 rounded-md mb-6 h-[300px] overflow-hidden">
-									<SceneRenderer
+									<VisibleScreenRenderer
 										code={generation.generated_code}
 										generationId={generation.id}
 									/>

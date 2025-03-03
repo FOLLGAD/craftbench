@@ -180,7 +180,7 @@ export const blockTypes = [
 	},
 	{
 		name: "obsidian",
-		color: 0x1a1a1a,
+		color: 0x3d354b,
 		roughness: 0.8,
 		metalness: 0.3,
 		normalScale: new THREE.Vector2(0.9, 0.9),
@@ -273,6 +273,15 @@ export const blockTypes = [
 	{
 		name: "orange_wool",
 		color: 0xffa500,
+		roughness: 0.95,
+		metalness: 0.0,
+		normalScale: new THREE.Vector2(0.5, 0.5),
+		normalMapPattern: "noise" as NormalMapPattern,
+		normalMapIntensity: 0.5,
+	},
+	{
+		name: "black_wool",
+		color: 0x000000,
 		roughness: 0.95,
 		metalness: 0.0,
 		normalScale: new THREE.Vector2(0.5, 0.5),

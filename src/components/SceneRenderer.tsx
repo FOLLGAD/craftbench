@@ -13,201 +13,104 @@ interface SceneRendererProps {
 
 const getPositionKey = (x: number, y: number, z: number) => `${x},${y},${z}`;
 
-interface SceneRef {
+class SceneManager {
 	scene: THREE.Scene;
 	camera: THREE.PerspectiveCamera;
 	renderer: THREE.WebGLRenderer;
 	controls: OrbitControls;
-	blocks: Map<string, THREE.Mesh>;
-	geometries: THREE.Mesh[]; // Store all geometries
-	blockPositions: Map<string, THREE.InstancedMesh>; // Track which positions belong to which instanced mesh
-	THREE: typeof THREE;
-	animationFrameId?: number; // Added to track animation frame
-}
+	geometries = [];
+	blockPositions = new Map<string, THREE.InstancedMesh>();
+	userInteracted = false;
+	autoRotateAngle = 0;
+	animationFrameId?: number;
+	pendingUpdates = new Map<
+		string,
+		{ position: [number, number, number]; blockType: string }
+	>();
 
-const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
-	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const sceneRef = useRef<SceneRef | null>(null);
-	const [inited, setInited] = useState(false);
-	const userInteractedRef = useRef(false);
-	const autoRotateAngle = useRef(0);
-
-	useEffect(() => {
-		// console.log(code);
-	}, [code]);
-
-	// Initialize Three.js scene
-	useEffect(() => {
-		if (!canvasRef.current) return;
-
+	constructor(canvas: HTMLCanvasElement) {
 		// Initialize material manager
 		materialManager.initialize();
 
 		// Scene setup
-		const scene = new THREE.Scene();
-		scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+		this.scene = new THREE.Scene();
+		this.scene.background = new THREE.Color(0x87ceeb);
 
 		// Camera
-		const camera = new THREE.PerspectiveCamera(
+		this.camera = new THREE.PerspectiveCamera(
 			75,
 			window.innerWidth / window.innerHeight,
 			0.1,
 			1000,
 		);
-		camera.position.set(25, 15, 25);
-		camera.lookAt(0, -10, 0);
+		this.camera.position.set(25, 15, 25);
+		this.camera.lookAt(0, -10, 0);
 
 		// Renderer
-		const renderer = new THREE.WebGLRenderer({
-			canvas: canvasRef.current,
+		this.renderer = new THREE.WebGLRenderer({
+			canvas,
 			antialias: true,
 		});
-		renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-		renderer.setPixelRatio(window.devicePixelRatio);
-		renderer.shadowMap.enabled = true;
-		renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+		this.renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+		this.renderer.setPixelRatio(window.devicePixelRatio);
+		this.renderer.shadowMap.enabled = true;
+		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 		// Controls
-		const controls = new OrbitControls(camera, renderer.domElement);
-		controls.enableDamping = true;
-		controls.dampingFactor = 0.05;
+		this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+		this.controls.enableDamping = true;
+		this.controls.dampingFactor = 0.05;
 
 		// Lighting
 		const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-		scene.add(ambientLight);
+		this.scene.add(ambientLight);
 
 		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 		directionalLight.position.set(5, 10, 7.5);
 		directionalLight.castShadow = true;
 		directionalLight.shadow.mapSize.width = 1024;
 		directionalLight.shadow.mapSize.height = 1024;
-		scene.add(directionalLight);
+		this.scene.add(directionalLight);
 
-		// Store scene reference
-		sceneRef.current = {
-			scene,
-			camera,
-			renderer,
-			controls,
-			blocks: new Map(),
-			geometries: [],
-			blockPositions: new Map(), // Initialize the position tracking map
-			THREE,
-		};
+		// Start animation loop
+		this.animate();
+	}
 
-		// Add event listeners to detect user interaction
-		const handleUserInteraction = () => {
-			userInteractedRef.current = true;
-		};
+	handleResize = () => {
+		this.camera.aspect = window.innerWidth / window.innerHeight;
+		this.camera.updateProjectionMatrix();
+		this.renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+	};
 
-		renderer.domElement.addEventListener("pointerdown", handleUserInteraction);
-		renderer.domElement.addEventListener("wheel", handleUserInteraction);
-		renderer.domElement.addEventListener("touchstart", handleUserInteraction);
+	animate = () => {
+		this.animationFrameId = requestAnimationFrame(this.animate);
 
-		const animate = () => {
-			const animationFrameId = requestAnimationFrame(animate);
-			sceneRef.current.animationFrameId = animationFrameId;
+		// Auto-rotate camera around the scene if user hasn't interacted
+		if (!this.userInteracted) {
+			// Increment the angle (0.005 radians per frame is a slow rotation)
+			this.autoRotateAngle += 0.005;
 
-			// Auto-rotate camera around the scene if user hasn't interacted
-			if (!userInteractedRef.current) {
-				// Increment the angle (0.005 radians per frame is a slow rotation)
-				autoRotateAngle.current += 0.005;
-
-				// Calculate new camera position in a circle around the center
-				const radius = Math.sqrt(
-					camera.position.x ** 2 + camera.position.z ** 2,
-				);
-				camera.position.x = radius * Math.sin(autoRotateAngle.current);
-				camera.position.z = radius * Math.cos(autoRotateAngle.current);
-
-				// Keep the camera looking at the center
-				camera.lookAt(0, -10, 0);
-			}
-
-			controls.update();
-			renderer.render(scene, camera);
-		};
-
-		animate();
-
-		// Handle window resize
-		const handleResize = () => {
-			if (!canvasRef.current) return;
-			camera.aspect = window.innerWidth / window.innerHeight;
-			camera.updateProjectionMatrix();
-			renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-		};
-
-		window.addEventListener("resize", handleResize);
-
-		setInited(true);
-
-		// Cleanup function for useEffect
-		return () => {
-			window.removeEventListener("resize", handleResize);
-			renderer.domElement.removeEventListener(
-				"pointerdown",
-				handleUserInteraction,
+			// Calculate new camera position in a circle around the center
+			const radius = Math.sqrt(
+				this.camera.position.x ** 2 + this.camera.position.z ** 2,
 			);
-			renderer.domElement.removeEventListener("wheel", handleUserInteraction);
-			renderer.domElement.removeEventListener(
-				"touchstart",
-				handleUserInteraction,
-			);
+			this.camera.position.x = radius * Math.sin(this.autoRotateAngle);
+			this.camera.position.z = radius * Math.cos(this.autoRotateAngle);
 
-			// Cancel any pending animation frame
-			if (sceneRef.current?.animationFrameId) {
-				cancelAnimationFrame(sceneRef.current.animationFrameId);
-			}
+			// Keep the camera looking at the center
+			this.camera.lookAt(0, -10, 0);
+		}
 
-			// Dispose of all geometries and materials to prevent memory leaks
-			if (sceneRef.current) {
-				const { scene, blocks, renderer, controls, geometries } =
-					sceneRef.current;
+		this.controls.update();
+		this.renderer.render(this.scene, this.camera);
+	};
 
-				// Dispose of all blocks (meshes, geometries)
-				for (const mesh of blocks.values()) {
-					if (mesh.geometry) mesh.geometry.dispose();
-					scene.remove(mesh);
-				}
-
-				// Dispose of all stored geometries
-				for (const mesh of geometries) {
-					if (mesh.geometry) mesh.geometry.dispose();
-					scene.remove(mesh);
-				}
-
-				// Clear the blocks map and geometries array
-				blocks.clear();
-				geometries.length = 0;
-
-				// Clean up all remaining objects from the scene
-				while (scene.children.length > 0) {
-					const object = scene.children[0];
-					object.clear();
-					scene.remove(object);
-				}
-
-				// Final renderer and controls disposal
-				renderer.dispose();
-				controls.dispose();
-
-				// Clear the sceneRef to free memory
-				sceneRef.current = null;
-			}
-		};
-	}, []);
-
-	// Helper function to remove blocks at positions
-	const removeBlocksAtPositions = useCallback((positions: string[]) => {
-		if (!sceneRef.current) return;
-		const { blockPositions, scene, geometries } = sceneRef.current;
-
+	removeBlocksAtPositions(positions: string[]) {
 		// Track which meshes need updating
 		const meshesToUpdate = new Set<THREE.InstancedMesh>();
 
 		for (const pos of positions) {
-			const mesh = blockPositions.get(pos);
+			const mesh = this.blockPositions.get(pos);
 			if (mesh) {
 				// Find the instance index for this position
 				for (let i = 0; i < mesh.count; i++) {
@@ -232,20 +135,20 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 								lastPosition.y,
 								lastPosition.z,
 							);
-							blockPositions.set(lastKey, mesh);
+							this.blockPositions.set(lastKey, mesh);
 						}
 
 						// Reduce the instance count
 						mesh.count--;
 						meshesToUpdate.add(mesh);
-						blockPositions.delete(pos);
+						this.blockPositions.delete(pos);
 
 						// If no instances left, remove the mesh entirely
 						if (mesh.count === 0) {
-							scene.remove(mesh);
-							const index = geometries.indexOf(mesh);
+							this.scene.remove(mesh);
+							const index = this.geometries.indexOf(mesh);
 							if (index > -1) {
-								geometries.splice(index, 1);
+								this.geometries.splice(index, 1);
 							}
 						}
 						break;
@@ -258,118 +161,205 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		for (const mesh of meshesToUpdate) {
 			mesh.instanceMatrix.needsUpdate = true;
 		}
-	}, []);
+	}
 
-	const handleSetBlock = useCallback(
-		(x: number, y: number, z: number, blockType: string) => {
-			if (!sceneRef.current) return;
+	MAX_BOUNDS = 25;
 
-			const posKey = getPositionKey(x, y, z);
+	setBlock(x: number, y: number, z: number, blockType: string) {
+		if (
+			x < -this.MAX_BOUNDS ||
+			x > this.MAX_BOUNDS ||
+			y < -this.MAX_BOUNDS ||
+			y > this.MAX_BOUNDS ||
+			z < -this.MAX_BOUNDS ||
+			z > this.MAX_BOUNDS
+		)
+			return;
+		const posKey = getPositionKey(x, y, z);
+		this.pendingUpdates.set(posKey, { position: [x, y, z], blockType });
+	}
 
-			// Remove any existing blocks at this position
-			removeBlocksAtPositions([posKey]);
+	fill(
+		x1: number,
+		y1: number,
+		z1: number,
+		x2: number,
+		y2: number,
+		z2: number,
+		blockType: string,
+	) {
+		const xs = Math.min(x1, x2);
+		const xe = Math.max(x1, x2);
+		const ys = Math.min(y1, y2);
+		const ye = Math.max(y1, y2);
+		const zs = Math.min(z1, z2);
+		const ze = Math.max(z1, z2);
 
-			if (blockType.toLowerCase() === "air") {
-				return;
-			}
-
-			const { scene, geometries, blockPositions } = sceneRef.current;
-			const material = materialManager.getMaterial(blockType.toLowerCase());
-
-			// Create a new instanced mesh with just one instance
-			const geometry = new THREE.BoxGeometry(1, 1, 1);
-			const instancedMesh = new THREE.InstancedMesh(geometry, material, 1);
-			instancedMesh.castShadow = true;
-			instancedMesh.receiveShadow = true;
-
-			// Set the position
-			const matrix = new THREE.Matrix4();
-			matrix.setPosition(x, y, z);
-			instancedMesh.setMatrixAt(0, matrix);
-			instancedMesh.instanceMatrix.needsUpdate = true;
-
-			// Add to scene and store references
-			scene.add(instancedMesh);
-			geometries.push(instancedMesh);
-			blockPositions.set(posKey, instancedMesh);
-		},
-		[removeBlocksAtPositions],
-	);
-
-	const handleFill = useCallback(
-		(
-			x1: number,
-			y1: number,
-			z1: number,
-			x2: number,
-			y2: number,
-			z2: number,
-			blockType: string,
-		) => {
-			if (!sceneRef.current) return;
-
-			// Collect all positions in the fill region
-			const positions: string[] = [];
-			for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-				for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-					for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
-						positions.push(getPositionKey(x, y, z));
-					}
+		for (
+			let x = Math.max(xs, -this.MAX_BOUNDS);
+			x <= Math.min(xe, this.MAX_BOUNDS);
+			x++
+		) {
+			for (
+				let y = Math.max(ys, -this.MAX_BOUNDS);
+				y <= Math.min(ye, this.MAX_BOUNDS);
+				y++
+			) {
+				for (
+					let z = Math.max(zs, -this.MAX_BOUNDS);
+					z <= Math.min(ze, this.MAX_BOUNDS);
+					z++
+				) {
+					const posKey = getPositionKey(x, y, z);
+					this.pendingUpdates.set(posKey, { position: [x, y, z], blockType });
 				}
 			}
+		}
+	}
 
-			// Remove existing blocks in the region
-			removeBlocksAtPositions(positions);
+	applyPendingUpdates() {
+		// Group blocks by material type for efficient instanced mesh creation
+		const blocksByMaterial = new Map<
+			string,
+			{ positions: [number, number, number][]; posKeys: string[] }
+		>();
 
-			if (blockType.toLowerCase() === "air") {
-				return;
-			}
+		// First, collect all positions that need to be removed
+		const positionsToRemove = new Set<string>();
+		for (const [posKey] of this.pendingUpdates) {
+			positionsToRemove.add(posKey);
+		}
 
-			const { scene, geometries, blockPositions } = sceneRef.current;
+		// Remove existing blocks at these positions
+		this.removeBlocksAtPositions(Array.from(positionsToRemove));
 
-			// Get the material from the material manager
-			const material = materialManager.getMaterial(blockType.toLowerCase());
+		// Group blocks by material
+		for (const [posKey, { position, blockType }] of this.pendingUpdates) {
+			if (blockType.toLowerCase() === "air") continue;
 
-			// Calculate dimensions
-			const width = Math.abs(x2 - x1) + 1;
-			const height = Math.abs(y2 - y1) + 1;
-			const depth = Math.abs(z2 - z1) + 1;
-			const totalInstances = width * height * depth;
+			const materialBlocks = blocksByMaterial.get(blockType.toLowerCase()) || {
+				positions: [],
+				posKeys: [],
+			};
+			materialBlocks.positions.push(position);
+			materialBlocks.posKeys.push(posKey);
+			blocksByMaterial.set(blockType.toLowerCase(), materialBlocks);
+		}
 
+		// Create instanced meshes for each material type
+		for (const [blockType, { positions, posKeys }] of blocksByMaterial) {
+			const material = materialManager.getMaterial(blockType);
 			const geometry = new THREE.BoxGeometry(1, 1, 1);
-
 			const instancedMesh = new THREE.InstancedMesh(
 				geometry,
 				material,
-				totalInstances,
+				positions.length,
 			);
 			instancedMesh.castShadow = true;
 			instancedMesh.receiveShadow = true;
 
 			const matrix = new THREE.Matrix4();
-			let instanceIndex = 0;
-
-			for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-				for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-					for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
-						matrix.setPosition(x, y, z);
-						instancedMesh.setMatrixAt(instanceIndex, matrix);
-						blockPositions.set(getPositionKey(x, y, z), instancedMesh);
-						instanceIndex++;
-					}
-				}
-			}
+			positions.forEach((pos, index) => {
+				matrix.setPosition(...pos);
+				instancedMesh.setMatrixAt(index, matrix);
+				this.blockPositions.set(posKeys[index], instancedMesh);
+			});
 
 			instancedMesh.instanceMatrix.needsUpdate = true;
+			this.scene.add(instancedMesh);
+			this.geometries.push(instancedMesh);
+		}
 
-			scene.add(instancedMesh);
-			geometries.push(instancedMesh);
-		},
-		[removeBlocksAtPositions],
-	);
+		// Clear pending updates
+		this.pendingUpdates.clear();
+	}
+
+	dispose() {
+		// Cancel any pending animation frame
+		if (this.animationFrameId) {
+			cancelAnimationFrame(this.animationFrameId);
+		}
+
+		// Dispose of all geometries and materials to prevent memory leaks
+		for (const mesh of this.geometries) {
+			if (mesh.geometry) mesh.geometry.dispose();
+			this.scene.remove(mesh);
+		}
+
+		// Clear arrays and maps
+		this.geometries.length = 0;
+		this.blockPositions.clear();
+		this.pendingUpdates.clear();
+
+		// Clean up all remaining objects from the scene
+		while (this.scene.children.length > 0) {
+			const object = this.scene.children[0];
+			object.clear();
+			this.scene.remove(object);
+		}
+
+		// Final renderer and controls disposal
+		this.renderer.dispose();
+		this.controls.dispose();
+	}
+}
+
+export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
+	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const sceneManagerRef = useRef<SceneManager | null>(null);
+	const [inited, setInited] = useState(false);
+
+	useEffect(() => {}, []); // Remove the unnecessary code dependency
+
+	// Initialize Three.js scene
+	useEffect(() => {
+		if (!canvasRef.current) return;
+
+		const sceneManager = new SceneManager(canvasRef.current);
+		sceneManagerRef.current = sceneManager;
+
+		// Add event listeners to detect user interaction
+		const handleUserInteraction = () => {
+			sceneManager.userInteracted = true;
+		};
+
+		sceneManager.renderer.domElement.addEventListener(
+			"pointerdown",
+			handleUserInteraction,
+		);
+		sceneManager.renderer.domElement.addEventListener(
+			"wheel",
+			handleUserInteraction,
+		);
+		sceneManager.renderer.domElement.addEventListener(
+			"touchstart",
+			handleUserInteraction,
+		);
+
+		window.addEventListener("resize", sceneManager.handleResize);
+
+		setInited(true);
+
+		return () => {
+			window.removeEventListener("resize", sceneManager.handleResize);
+			sceneManager.renderer.domElement.removeEventListener(
+				"pointerdown",
+				handleUserInteraction,
+			);
+			sceneManager.renderer.domElement.removeEventListener(
+				"wheel",
+				handleUserInteraction,
+			);
+			sceneManager.renderer.domElement.removeEventListener(
+				"touchstart",
+				handleUserInteraction,
+			);
+			sceneManager.dispose();
+		};
+	}, []);
 
 	const executeCode = useCallback(() => {
-		if (!sceneRef.current) {
+		if (!sceneManagerRef.current) {
 			toast.error("3D renderer not initialized yet");
 			return;
 		}
@@ -377,75 +367,97 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		try {
 			// Prepare functions to be called from worker
 			const workerFunctionsSetup = `
-        function setBlock(x, y, z, blockType) {
-          self.postMessage({ 
-            action: 'setBlock', 
-            params: { x, y, z, blockType } 
-          });
-        }
-        
-        function fill(x1, y1, z1, x2, y2, z2, blockType) {
-			self.postMessage({ 
-				action: 'fill', 
-				params: { x1, y1, z1, x2, y2, z2, blockType } 
-			});
-        }
-      `;
+				function setBlock(x, y, z, blockType) {
+					self.postMessage({ 
+						action: 'setBlock', 
+						params: { x, y, z, blockType } 
+					});
+				}
+				
+				function fill(x1, y1, z1, x2, y2, z2, blockType) {
+					self.postMessage({ 
+						action: 'fill', 
+						params: { x1, y1, z1, x2, y2, z2, blockType } 
+					});
+				}
+			`;
 
 			// Create worker with user code
 			const workerCode = `
-        ${workerFunctionsSetup}
-        
-        self.onmessage = function() {
-          try {
-            ${code}
-            self.postMessage({ action: 'complete', success: true });
-          } catch (error) {
-            self.postMessage({ action: 'error', message: error.message });
-          }
-        };
-      `;
+				${workerFunctionsSetup}
+				
+				self.onmessage = function() {
+					try {
+						${code}
+						self.postMessage({ action: 'complete', success: true });
+					} catch (error) {
+						self.postMessage({ action: 'error', message: error.message });
+					}
+				};
+			`;
 
 			const blob = new Blob([workerCode], { type: "application/javascript" });
 			const workerUrl = URL.createObjectURL(blob);
 			const worker = new Worker(workerUrl);
 
-			// Set timeout to terminate worker (1 second)
+			// Set timeout to terminate worker (5 seconds)
 			const timeoutId = setTimeout(() => {
 				worker.terminate();
 				URL.revokeObjectURL(workerUrl);
-				// toast.error("Error: Code execution timed out (max 1 second)");
 				console.error("Error: Code execution timed out");
 				posthog.capture("code_execution_timeout", {
 					code,
 					generationId,
 				});
-			}, 5000);
+			}, 1000);
 
 			const queue = [];
 
 			// Listen for messages from worker
 			worker.onmessage = (e) => {
 				const data = e.data;
-
 				const Y_OFFSET = 10; // ai likes placing things below origin
 
 				if (data.action === "setBlock") {
 					const { x, y, z, blockType } = data.params;
-					queue.push(() => handleSetBlock(x, y + Y_OFFSET, z, blockType));
+					queue.push(["setBlock", x, y + Y_OFFSET, z, blockType]);
 				} else if (data.action === "fill") {
 					const { x1, y1, z1, x2, y2, z2, blockType } = data.params;
-					queue.push(() =>
-						handleFill(x1, y1 + Y_OFFSET, z1, x2, y2 + Y_OFFSET, z2, blockType),
-					);
+					queue.push([
+						"fill",
+						x1,
+						y1 + Y_OFFSET,
+						z1,
+						x2,
+						y2 + Y_OFFSET,
+						z2,
+						blockType,
+					]);
 				} else if (data.action === "complete") {
-					console.log("complete");
 					clearTimeout(timeoutId);
 					worker.terminate();
 					URL.revokeObjectURL(workerUrl);
 					for (const fn of queue) {
-						fn();
+						if (fn[0] === "setBlock") {
+							sceneManagerRef.current?.setBlock(
+								...(fn.slice(1) as [number, number, number, string]),
+							);
+						} else if (fn[0] === "fill") {
+							sceneManagerRef.current?.fill(
+								...(fn.slice(1) as [
+									number,
+									number,
+									number,
+									number,
+									number,
+									number,
+									string,
+								]),
+							);
+						}
 					}
+					// Apply all pending updates at once after all blocks have been queued
+					sceneManagerRef.current?.applyPendingUpdates();
 				} else if (data.action === "error") {
 					clearTimeout(timeoutId);
 					worker.terminate();
@@ -463,7 +475,7 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 		}
-	}, [handleSetBlock, handleFill, code, generationId]);
+	}, [code, generationId]);
 
 	// Execute user code whenever code changes
 	useEffect(() => {
@@ -479,4 +491,36 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 	);
 };
 
-export default SceneRenderer;
+// Wrapper that only renders the scene when it's visible on screen
+export const VisibleScreenRenderer = ({
+	code,
+	generationId,
+}: SceneRendererProps) => {
+	const [isVisible, setIsVisible] = useState(false);
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry.isIntersecting) setIsVisible(true);
+			},
+			{
+				threshold: 0.4, // Trigger when at least 40% is visible
+			},
+		);
+
+		if (containerRef.current) {
+			observer.observe(containerRef.current);
+		}
+
+		return () => {
+			observer.disconnect();
+		};
+	}, []);
+
+	return (
+		<div ref={containerRef}>
+			{isVisible && <SceneRenderer code={code} generationId={generationId} />}
+		</div>
+	);
+};

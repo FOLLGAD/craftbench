@@ -1,4 +1,4 @@
-import SceneRenderer from "@/components/SceneRenderer";
+import { SceneRenderer } from "@/components/SceneRenderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
