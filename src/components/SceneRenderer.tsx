@@ -154,7 +154,7 @@ class SceneManager {
       mesh.instanceMatrix.needsUpdate = true;
     }
   }
-  MAX_BOUNDS = 25;
+  MAX_BOUNDS = 45;
   setBlock(x: number, y: number, z: number, blockType: string) {
     if (x < -this.MAX_BOUNDS || x > this.MAX_BOUNDS || y < -this.MAX_BOUNDS || y > this.MAX_BOUNDS || z < -this.MAX_BOUNDS || z > this.MAX_BOUNDS) return;
     const posKey = getPositionKey(x, y, z);
