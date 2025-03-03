@@ -1,3 +1,4 @@
+
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Trophy } from "lucide-react";
@@ -8,7 +9,7 @@ const Header = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <Link to="/">
-            <h1 className="text-2xl font-bold text-white">Benchcraft</h1>
+            <h1 className="text-2xl font-thin text-white">Benchcraft</h1>
           </Link>
           <span className="hidden md:inline-block text-sm text-muted-foreground ml-4">
             Best AI benchmark – compare LLMs on spatiovisual tasks
