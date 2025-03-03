@@ -1,3 +1,4 @@
+
 import { VisibleScreenRenderer } from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,92 +115,123 @@ const VoteComparison = ({
     const date = new Date(timestamp);
     return date.toLocaleString();
   };
-  return <div className="mb-8 shadow-lg rounded-lg p-4 border border-gray-200 bg-white">
-			{comparison.data ? <>
-					<div className="py-0 text-center flex items-center justify-center">
-						<p className="text-gray-700 text-2xl font-semibold">
-							<Link to={`/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`} className="hover:underline text-blue-500">
-								"{comparison.data?.prompt.trim()}"
-							</Link>
-						</p>
-						<ShareIcon className="w-4 h-4 ml-2 inline-block cursor-pointer text-gray-500 hover:text-gray-700 hover:underline" onClick={() => {
-          navigator.clipboard.writeText(`${window.location.origin}/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`);
-          toast.success("Copied to clipboard");
-        }} />
-					</div>
+  return (
+    <div className="mb-8 shadow-lg rounded-lg p-4 border border-border bg-card">
+      {comparison.data ? (
+        <>
+          <div className="py-0 text-center flex items-center justify-center">
+            <p className="text-card-foreground text-2xl font-semibold">
+              <Link to={`/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`} className="hover:underline text-primary">
+                "{comparison.data?.prompt.trim()}"
+              </Link>
+            </p>
+            <ShareIcon 
+              className="w-4 h-4 ml-2 inline-block cursor-pointer text-muted-foreground hover:text-card-foreground hover:underline" 
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`);
+                toast.success("Copied to clipboard");
+              }} 
+            />
+          </div>
 
-					{/* Added timestamp display */}
-					<div className="text-center mb-3">
-						<span className="text-sm text-gray-500" title={formatFullDate(comparison.data.created_at)}>
-							{formatTimeAgo(comparison.data.created_at)}
-						</span>
-					</div>
+          {/* Timestamp display */}
+          <div className="text-center mb-3">
+            <span className="text-sm text-muted-foreground" title={formatFullDate(comparison.data.created_at)}>
+              {formatTimeAgo(comparison.data.created_at)}
+            </span>
+          </div>
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						{generations.map((generation, index) => <div key={generation.id} className={`${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "border-green-500" : "border-gray-200"}`}>
-								<div className="flex flex-col justify-between items-center mb-4 w-full">
-									<div className="w-full flex items-center gap-2 justify-between">
-										<h3 className="truncate text-lg font-semibold">
-											{hasVoted ? formatModelName(generation.model_name) : `Model ${index + 1}`}
-										</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {generations.map((generation, index) => (
+              <div 
+                key={generation.id} 
+                className={`border rounded-lg p-4 ${
+                  hasVoted && myVote === generation.id 
+                    ? "border-primary/50" 
+                    : "border-border"
+                }`}
+              >
+                <div className="flex flex-col justify-between items-center mb-4 w-full">
+                  <div className="w-full flex items-center gap-2 justify-between">
+                    <h3 className="truncate text-lg font-semibold text-card-foreground">
+                      {hasVoted ? formatModelName(generation.model_name) : `Model ${index + 1}`}
+                    </h3>
 
-										{winner === generation.id && myVote && 
-											<Crown className="h-5 w-5 text-yellow-500" />
-										}
+                    {winner === generation.id && myVote && 
+                      <Crown className="h-5 w-5 text-yellow-500" />
+                    }
 
-										{winner === "tie" && myVote && <Badge variant="secondary">Tie</Badge>}
+                    {winner === "tie" && myVote && <Badge variant="secondary">Tie</Badge>}
 
-										{!!adminCode && <Dialog>
-												<DialogTrigger asChild>
-													<Button variant="outline">Code</Button>
-												</DialogTrigger>
-												<DialogContent>
-													<DialogHeader>
-														<DialogTitle>Code</DialogTitle>
-													</DialogHeader>
-													<DialogDescription>
-														<Textarea className="w-full resize-none" value={generation.generated_code} readOnly />
-													</DialogDescription>
-												</DialogContent>
-											</Dialog>}
-									</div>
-									{hasVoted && modelRatings.data?.[generation.model_name] && <div className="flex items-center gap-2 justify-between w-full min-h-[24px]">
-											<p className="text-sm text-gray-600">
-												Elo: {modelRatings.data[generation.model_name]}
-											</p>
+                    {!!adminCode && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline">Code</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Code</DialogTitle>
+                          </DialogHeader>
+                          <DialogDescription>
+                            <Textarea className="w-full resize-none" value={generation.generated_code} readOnly />
+                          </DialogDescription>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+                  
+                  {hasVoted && modelRatings.data?.[generation.model_name] && (
+                    <div className="flex items-center gap-2 justify-between w-full min-h-[24px]">
+                      <p className="text-sm text-muted-foreground">
+                        Elo: {modelRatings.data[generation.model_name]}
+                      </p>
 
-											<Badge variant={comparisonVotes.data?.[generation.id] > 0 ? "default" : "outline"} className="flex-shrink-0">
-												{getVotePercentage(generation.id)}% (
-												{comparisonVotes.data?.[generation.id] || 0} votes)
-											</Badge>
-										</div>}
-								</div>
+                      <Badge variant={comparisonVotes.data?.[generation.id] > 0 ? "default" : "outline"} className="flex-shrink-0">
+                        {getVotePercentage(generation.id)}% (
+                        {comparisonVotes.data?.[generation.id] || 0} votes)
+                      </Badge>
+                    </div>
+                  )}
+                </div>
 
-								<div className="bg-gray-800 rounded-md mb-6 overflow-hidden">
-									<VisibleScreenRenderer code={generation.generated_code} generationId={generation.id} />
-								</div>
+                <div className="bg-gray-900 rounded-md mb-6 overflow-hidden">
+                  <VisibleScreenRenderer code={generation.generated_code} generationId={generation.id} />
+                </div>
 
-								<Button onClick={() => onVote(comparisonId, generation.id)} disabled={hasVoted || isVoting} variant={myVote ? "default" : "outline"} className={`w-full ${myVote === generation.id ? "bg-green-600 hover:bg-green-700" : ""}`}>
-									{isVoting ? "Voting..." : myVote === generation.id ? <>
-											<ThumbsUp className="mr-2 h-5 w-5" /> Voted!
-										</> : "Vote for this generation"}
-								</Button>
-							</div>)}
-					</div>
-				</> : <div className="flex flex-col gap-4">
-					<Skeleton className="w-96 h-12 rounded-md mx-auto" />
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="flex flex-col gap-2">
-							<Skeleton className="w-full h-8 rounded-md" />
-							<Skeleton className="w-full h-[300px] rounded-md" />
-						</div>
+                <Button 
+                  onClick={() => onVote(comparisonId, generation.id)} 
+                  disabled={hasVoted || isVoting} 
+                  variant={myVote === generation.id ? "default" : "outline"} 
+                  className={`w-full ${myVote === generation.id ? "bg-primary hover:bg-primary/90" : ""}`}
+                >
+                  {isVoting ? "Voting..." : myVote === generation.id ? (
+                    <>
+                      <ThumbsUp className="mr-2 h-5 w-5" /> Voted!
+                    </>
+                  ) : "Vote for this generation"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <Skeleton className="w-96 h-12 rounded-md mx-auto" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Skeleton className="w-full h-8 rounded-md" />
+              <Skeleton className="w-full h-[300px] rounded-md" />
+            </div>
 
-						<div className="flex flex-col gap-2">
-							<Skeleton className="w-full h-8 rounded-md" />
-							<Skeleton className="w-full h-[300px] rounded-md" />
-						</div>
-					</div>
-				</div>}
-		</div>;
+            <div className="flex flex-col gap-2">
+              <Skeleton className="w-full h-8 rounded-md" />
+              <Skeleton className="w-full h-[300px] rounded-md" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
+
 export default VoteComparison;
