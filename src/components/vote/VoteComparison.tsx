@@ -139,7 +139,7 @@ const VoteComparison = ({
 						{generations.map((generation, index) => <div key={generation.id} className={`${hasVoted && comparisonVotes.data?.[generation.id] > 0 ? "border-green-500" : "border-gray-200"}`}>
 								<div className="flex flex-col justify-between items-center mb-4 w-full">
 									<div className="w-full flex items-center gap-2">
-										<h3 className="text-xl font-bold">
+										<h3 className="text-xl font-bold truncate">
 											{hasVoted ? formatModelName(generation.model_name) : `Model ${index + 1}`}
 										</h3>
 
