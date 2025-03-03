@@ -199,7 +199,7 @@ const VoteComparison = ({
 													</DialogHeader>
 													<DialogDescription>
 														<Textarea
-															className="w-full h-[300px] resize-none"
+															className="w-full resize-none"
 															value={generation.generated_code}
 															readOnly
 														/>
