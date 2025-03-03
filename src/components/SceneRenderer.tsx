@@ -2,8 +2,6 @@ import posthog from "posthog-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as THREE from "three";
-import { CSG } from "three-csg-ts";
-import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 // @ts-expect-error dasdas
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { materialManager } from "../utils/materials";
@@ -13,6 +11,8 @@ interface SceneRendererProps {
 	generationId?: string;
 }
 
+const getPositionKey = (x: number, y: number, z: number) => `${x},${y},${z}`;
+
 interface SceneRef {
 	scene: THREE.Scene;
 	camera: THREE.PerspectiveCamera;
@@ -20,6 +20,7 @@ interface SceneRef {
 	controls: OrbitControls;
 	blocks: Map<string, THREE.Mesh>;
 	geometries: THREE.Mesh[]; // Store all geometries
+	blockPositions: Map<string, THREE.InstancedMesh>; // Track which positions belong to which instanced mesh
 	THREE: typeof THREE;
 	animationFrameId?: number; // Added to track animation frame
 }
@@ -32,7 +33,7 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 	const autoRotateAngle = useRef(0);
 
 	useEffect(() => {
-		console.log(code);
+		// console.log(code);
 	}, [code]);
 
 	// Initialize Three.js scene
@@ -89,7 +90,8 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			renderer,
 			controls,
 			blocks: new Map(),
-			geometries: [], // Initialize empty geometries array
+			geometries: [],
+			blockPositions: new Map(), // Initialize the position tracking map
 			THREE,
 		};
 
@@ -196,228 +198,102 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		};
 	}, []);
 
-	// Helper function to create a block mesh
-	const createBlockMesh = useCallback(
-		(x: number, y: number, z: number, blockType: string): THREE.Mesh => {
-			const geometry = new THREE.BoxGeometry(1, 1, 1);
-			const material = materialManager.getMaterial(blockType.toLowerCase());
-			const mesh = new THREE.Mesh(geometry, material);
-			mesh.position.set(x, y, z);
-			mesh.castShadow = true;
-			mesh.receiveShadow = true;
-			return mesh;
-		},
-		[],
-	);
-
-	// Helper function to subtract air blocks from existing geometries
-	const subtractAirBlock = useCallback((x: number, y: number, z: number) => {
+	// Helper function to remove blocks at positions
+	const removeBlocksAtPositions = useCallback((positions: string[]) => {
 		if (!sceneRef.current) return;
-		const { scene, geometries } = sceneRef.current;
+		const { blockPositions, scene, geometries } = sceneRef.current;
 
-		// Create air block for subtraction
-		const airGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01); // Slightly larger to ensure complete subtraction
-		const airMesh = new THREE.Mesh(airGeometry);
-		airMesh.position.set(x, y, z);
+		// Track which meshes need updating
+		const meshesToUpdate = new Set<THREE.InstancedMesh>();
 
-		// Process each existing geometry and subtract the air block
-		const updatedGeometries: THREE.Mesh[] = [];
-		let subtractionsPerformed = 0;
+		for (const pos of positions) {
+			const mesh = blockPositions.get(pos);
+			if (mesh) {
+				// Find the instance index for this position
+				for (let i = 0; i < mesh.count; i++) {
+					const matrix = new THREE.Matrix4();
+					mesh.getMatrixAt(i, matrix);
+					const position = new THREE.Vector3();
+					position.setFromMatrixPosition(matrix);
+					const key = getPositionKey(position.x, position.y, position.z);
 
-		for (let i = 0; i < geometries.length; i++) {
-			const existingMesh = geometries[i];
+					if (key === pos) {
+						// Move the last instance to this position if it's not the last one
+						if (i < mesh.count - 1) {
+							const lastMatrix = new THREE.Matrix4();
+							mesh.getMatrixAt(mesh.count - 1, lastMatrix);
+							mesh.setMatrixAt(i, lastMatrix);
 
-			// Check if the mesh has a valid geometry
-			if (!existingMesh.geometry) {
-				updatedGeometries.push(existingMesh);
-				continue;
-			}
+							// Update the position mapping for the moved instance
+							const lastPosition = new THREE.Vector3();
+							lastPosition.setFromMatrixPosition(lastMatrix);
+							const lastKey = getPositionKey(
+								lastPosition.x,
+								lastPosition.y,
+								lastPosition.z,
+							);
+							blockPositions.set(lastKey, mesh);
+						}
 
-			// Calculate bounding box for the existing mesh if not already calculated
-			if (!existingMesh.geometry.boundingBox) {
-				existingMesh.geometry.computeBoundingBox();
-			}
+						// Reduce the instance count
+						mesh.count--;
+						meshesToUpdate.add(mesh);
+						blockPositions.delete(pos);
 
-			// Skip if the mesh is too far away (optimization)
-			// Use bounding box intersection check for more accurate detection
-			const meshBoundingBox = existingMesh.geometry.boundingBox;
-			const airBoundingBox = new THREE.Box3().setFromObject(airMesh);
-
-			if (meshBoundingBox && !meshBoundingBox.intersectsBox(airBoundingBox)) {
-				updatedGeometries.push(existingMesh);
-				continue;
-			}
-
-			try {
-				// Clone the meshes to avoid modifying the originals during CSG operations
-				const meshForCSG = existingMesh.clone();
-				const airMeshForCSG = airMesh.clone();
-
-				const csgResult = CSG.subtract(meshForCSG, airMeshForCSG);
-
-				// If the result is valid, replace the old mesh with the new one
-				if (csgResult?.geometry) {
-					// Preserve the material from the original mesh
-					csgResult.material = existingMesh.material;
-					csgResult.castShadow = true;
-					csgResult.receiveShadow = true;
-
-					// Remove the old mesh from the scene
-					scene.remove(existingMesh);
-
-					// Add the new mesh to the scene and updated geometries
-					scene.add(csgResult);
-					updatedGeometries.push(csgResult);
-					subtractionsPerformed++;
-				} else {
-					// If subtraction failed, keep the original
-					console.warn("CSG subtraction returned null or invalid geometry");
-					updatedGeometries.push(existingMesh);
+						// If no instances left, remove the mesh entirely
+						if (mesh.count === 0) {
+							scene.remove(mesh);
+							const index = geometries.indexOf(mesh);
+							if (index > -1) {
+								geometries.splice(index, 1);
+							}
+						}
+						break;
+					}
 				}
-			} catch (error) {
-				// If an error occurs during CSG, keep the original
-				console.error("CSG subtraction error:", error);
-				updatedGeometries.push(existingMesh);
 			}
 		}
 
-		// Update the geometries array
-		sceneRef.current.geometries = updatedGeometries;
-
-		// Dispose of the temporary air mesh
-		airGeometry.dispose();
+		// Update modified meshes
+		for (const mesh of meshesToUpdate) {
+			mesh.instanceMatrix.needsUpdate = true;
+		}
 	}, []);
 
-	// Handler for setBlock commands from worker
 	const handleSetBlock = useCallback(
 		(x: number, y: number, z: number, blockType: string) => {
 			if (!sceneRef.current) return;
 
-			const { scene, geometries } = sceneRef.current;
+			const posKey = getPositionKey(x, y, z);
 
-			// Handle air blocks by subtracting from existing geometries
+			// Remove any existing blocks at this position
+			removeBlocksAtPositions([posKey]);
+
 			if (blockType.toLowerCase() === "air") {
-				subtractAirBlock(x, y, z);
 				return;
 			}
 
-			// Create new block
-			const mesh = createBlockMesh(x, y, z, blockType);
+			const { scene, geometries, blockPositions } = sceneRef.current;
+			const material = materialManager.getMaterial(blockType.toLowerCase());
 
-			// Add to scene and store in geometries array
-			scene.add(mesh);
-			geometries.push(mesh);
+			// Create a new instanced mesh with just one instance
+			const geometry = new THREE.BoxGeometry(1, 1, 1);
+			const instancedMesh = new THREE.InstancedMesh(geometry, material, 1);
+			instancedMesh.castShadow = true;
+			instancedMesh.receiveShadow = true;
+
+			// Set the position
+			const matrix = new THREE.Matrix4();
+			matrix.setPosition(x, y, z);
+			instancedMesh.setMatrixAt(0, matrix);
+			instancedMesh.instanceMatrix.needsUpdate = true;
+
+			// Add to scene and store references
+			scene.add(instancedMesh);
+			geometries.push(instancedMesh);
+			blockPositions.set(posKey, instancedMesh);
 		},
-		[createBlockMesh, subtractAirBlock],
-	);
-
-	// Helper function to subtract air region from existing geometries
-	const subtractAirRegion = useCallback(
-		(
-			x1: number,
-			y1: number,
-			z1: number,
-			x2: number,
-			y2: number,
-			z2: number,
-		) => {
-			if (!sceneRef.current) return;
-			// Ensure x1,y1,z1 is the minimum corner and x2,y2,z2 is the maximum
-			const minX = Math.min(x1, x2);
-			const minY = Math.min(y1, y2);
-			const minZ = Math.min(z1, z2);
-			const maxX = Math.max(x1, x2);
-			const maxY = Math.max(y1, y2);
-			const maxZ = Math.max(z1, z2);
-
-			// Create a single air box for the entire region
-			const width = maxX - minX + 1.01;
-			const height = maxY - minY + 1.01;
-			const depth = maxZ - minZ + 1.01;
-
-			const airGeometry = new THREE.BoxGeometry(width, height, depth);
-			const airMesh = new THREE.Mesh(airGeometry);
-
-			// Position the air box at the center of the region
-			airMesh.position.set(
-				minX + width / 2 - 0.5,
-				minY + height / 2 - 0.5,
-				minZ + depth / 2 - 0.5,
-			);
-
-			const { scene, geometries } = sceneRef.current;
-			const updatedGeometries: THREE.Mesh[] = [];
-			let subtractionsPerformed = 0;
-
-			// Create a bounding box for the air region
-			const airBoundingBox = new THREE.Box3().setFromObject(airMesh);
-
-			// Process each existing geometry and subtract the air region
-			for (let i = 0; i < geometries.length; i++) {
-				const existingMesh = geometries[i];
-
-				// Check if the mesh has a valid geometry
-				if (!existingMesh.geometry) {
-					updatedGeometries.push(existingMesh);
-					continue;
-				}
-
-				// Calculate bounding box for the existing mesh if not already calculated
-				if (!existingMesh.geometry.boundingBox) {
-					existingMesh.geometry.computeBoundingBox();
-				}
-
-				// Skip if the mesh is too far away (optimization)
-				// Use bounding box intersection check for more accurate detection
-				const meshBoundingBox = existingMesh.geometry.boundingBox;
-
-				if (meshBoundingBox && !meshBoundingBox.intersectsBox(airBoundingBox)) {
-					updatedGeometries.push(existingMesh);
-					continue;
-				}
-
-				try {
-					// Clone the meshes to avoid modifying the originals during CSG operations
-					const meshForCSG = existingMesh.clone();
-					const airMeshForCSG = airMesh.clone();
-
-					const csgResult = CSG.subtract(meshForCSG, airMeshForCSG);
-
-					// If the result is valid, replace the old mesh with the new one
-					if (csgResult?.geometry) {
-						// Preserve the material from the original mesh
-						csgResult.material = existingMesh.material;
-						csgResult.castShadow = true;
-						csgResult.receiveShadow = true;
-
-						// Remove the old mesh from the scene
-						scene.remove(existingMesh);
-
-						// Add the new mesh to the scene and updated geometries
-						scene.add(csgResult);
-						updatedGeometries.push(csgResult);
-						subtractionsPerformed++;
-					} else {
-						// If subtraction failed, keep the original
-						console.warn(
-							"CSG region subtraction returned null or invalid geometry",
-						);
-						updatedGeometries.push(existingMesh);
-					}
-				} catch (error) {
-					// If an error occurs during CSG, keep the original
-					console.error("CSG region subtraction error:", error);
-					updatedGeometries.push(existingMesh);
-				}
-			}
-
-			// Update the geometries array
-			sceneRef.current.geometries = updatedGeometries;
-
-			// Dispose of the temporary air mesh
-			airGeometry.dispose();
-		},
-		[],
+		[removeBlocksAtPositions],
 	);
 
 	const handleFill = useCallback(
@@ -432,51 +308,64 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		) => {
 			if (!sceneRef.current) return;
 
-			const { scene, geometries } = sceneRef.current;
-
-			// Handle air blocks by subtracting from existing geometries
-			if (blockType.toLowerCase() === "air") {
-				subtractAirRegion(x1, y1, z1, x2, y2, z2);
-				return;
-			}
-
-			// Get the material from the material manager
-			const material = materialManager.getMaterial(blockType.toLowerCase());
-
-			// Create a single geometry for all blocks in the fill region
-			const geometriesArray: THREE.BoxGeometry[] = [];
-
-			// Process blocks in reverse order to ensure later blocks are rendered "on top"
-			// This affects the order in the merged geometry
-			for (let x = Math.max(x1, x2); x >= Math.min(x1, x2); x--) {
-				for (let y = Math.max(y1, y2); y >= Math.min(y1, y2); y--) {
-					for (let z = Math.max(z1, z2); z >= Math.min(z1, z2); z--) {
-						// Create geometry for this block
-						const geometry = new THREE.BoxGeometry(1, 1, 1);
-
-						// Translate the geometry to its position
-						geometry.translate(x, y, z);
-
-						// Add to geometries array
-						geometriesArray.push(geometry);
+			// Collect all positions in the fill region
+			const positions: string[] = [];
+			for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+				for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+					for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
+						positions.push(getPositionKey(x, y, z));
 					}
 				}
 			}
 
-			// Merge all geometries into one
-			const mergedGeometry =
-				BufferGeometryUtils.mergeGeometries(geometriesArray);
+			// Remove existing blocks in the region
+			removeBlocksAtPositions(positions);
 
-			// Create a single mesh for all blocks
-			const mesh = new THREE.Mesh(mergedGeometry, material);
-			mesh.castShadow = true;
-			mesh.receiveShadow = true;
+			if (blockType.toLowerCase() === "air") {
+				return;
+			}
 
-			// Add to scene and store in geometries array
-			scene.add(mesh);
-			geometries.push(mesh);
+			const { scene, geometries, blockPositions } = sceneRef.current;
+
+			// Get the material from the material manager
+			const material = materialManager.getMaterial(blockType.toLowerCase());
+
+			// Calculate dimensions
+			const width = Math.abs(x2 - x1) + 1;
+			const height = Math.abs(y2 - y1) + 1;
+			const depth = Math.abs(z2 - z1) + 1;
+			const totalInstances = width * height * depth;
+
+			const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+			const instancedMesh = new THREE.InstancedMesh(
+				geometry,
+				material,
+				totalInstances,
+			);
+			instancedMesh.castShadow = true;
+			instancedMesh.receiveShadow = true;
+
+			const matrix = new THREE.Matrix4();
+			let instanceIndex = 0;
+
+			for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+				for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+					for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
+						matrix.setPosition(x, y, z);
+						instancedMesh.setMatrixAt(instanceIndex, matrix);
+						blockPositions.set(getPositionKey(x, y, z), instancedMesh);
+						instanceIndex++;
+					}
+				}
+			}
+
+			instancedMesh.instanceMatrix.needsUpdate = true;
+
+			scene.add(instancedMesh);
+			geometries.push(instancedMesh);
 		},
-		[subtractAirRegion],
+		[removeBlocksAtPositions],
 	);
 
 	const executeCode = useCallback(() => {
@@ -533,6 +422,8 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				});
 			}, 5000);
 
+			const queue = [];
+
 			// Listen for messages from worker
 			worker.onmessage = (e) => {
 				const data = e.data;
@@ -541,14 +432,20 @@ const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 
 				if (data.action === "setBlock") {
 					const { x, y, z, blockType } = data.params;
-					handleSetBlock(x, y + Y_OFFSET, z, blockType);
+					queue.push(() => handleSetBlock(x, y + Y_OFFSET, z, blockType));
 				} else if (data.action === "fill") {
 					const { x1, y1, z1, x2, y2, z2, blockType } = data.params;
-					handleFill(x1, y1 + Y_OFFSET, z1, x2, y2 + Y_OFFSET, z2, blockType);
+					queue.push(() =>
+						handleFill(x1, y1 + Y_OFFSET, z1, x2, y2 + Y_OFFSET, z2, blockType),
+					);
 				} else if (data.action === "complete") {
+					console.log("complete");
 					clearTimeout(timeoutId);
 					worker.terminate();
 					URL.revokeObjectURL(workerUrl);
+					for (const fn of queue) {
+						fn();
+					}
 				} else if (data.action === "error") {
 					clearTimeout(timeoutId);
 					worker.terminate();
