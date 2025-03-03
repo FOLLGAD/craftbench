@@ -66,7 +66,7 @@ const HeroSection = () => {
               onClick={handleCreateComparison} 
               disabled={!prompt.trim() || creatingComparison} 
               aria-label="Generate with models" 
-              className="text-primary-foreground rounded-full bg-primary hover:bg-primary/90"
+              className="text-primary-foreground rounded-full bg-primary hover:bg-primary/90 w-32"
             >
               {creatingComparison ? (
                 <>
