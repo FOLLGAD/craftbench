@@ -23,7 +23,7 @@ export const useGenerate = () => {
 
 			const endTime = performance.now();
 			const elapsedSeconds = ((endTime - startTime) / 1000).toFixed(2);
-			console.log(`Generation completed in ${elapsedSeconds} seconds`);
+			console.log(`Generation completed in ${elapsedSeconds}s`);
 
 			if (functionError) {
 				throw new Error(functionError.message || "Failed to generate code");

@@ -7,8 +7,8 @@ const LoadingState = () => {
   
   useEffect(() => {
     const timer = setInterval(() => {
-      setSecondsElapsed(prev => prev + 1);
-    }, 1000);
+      setSecondsElapsed(prev => prev + 0.1);
+    }, 100);
     
     return () => clearInterval(timer);
   }, []);
@@ -17,7 +17,7 @@ const LoadingState = () => {
     <div className="bg-card rounded-lg shadow-lg border border-border p-12 text-center">
       <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
       <h3 className="text-xl font-medium text-card-foreground mb-2">
-        Generating your voxel scenes... ({secondsElapsed}s)
+        Generating your voxel scenes... ({secondsElapsed.toFixed(2)}s)
       </h3>
       <p className="text-muted-foreground">This may take a few moments</p>
     </div>

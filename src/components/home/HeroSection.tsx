@@ -20,8 +20,8 @@ const HeroSection = () => {
     if (creatingComparison) {
       setSecondsElapsed(0);
       timer = window.setInterval(() => {
-        setSecondsElapsed(prev => prev + 1);
-      }, 1000);
+        setSecondsElapsed(prev => prev + 0.1);
+      }, 100);
     }
     
     return () => {
@@ -71,7 +71,7 @@ const HeroSection = () => {
               {creatingComparison ? (
                 <>
                   <Loader2 className="mr-2 animate-spin" />
-                  {secondsElapsed}s elapsed
+                  {secondsElapsed.toFixed(2)}s
                 </>
               ) : (
                 <>
