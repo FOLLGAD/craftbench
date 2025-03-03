@@ -1,4 +1,3 @@
-
 import { VisibleScreenRenderer } from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,7 +120,7 @@ const VoteComparison = ({
         <>
           <div className="py-0 text-center flex items-center justify-center">
             <p className="text-card-foreground text-2xl font-semibold">
-              <Link to={`/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`} className="hover:underline text-primary">
+              <Link to={`/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`} className="hover:underline text-white">
                 "{comparison.data?.prompt.trim()}"
               </Link>
             </p>
