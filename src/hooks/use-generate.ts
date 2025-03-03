@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -9,6 +10,9 @@ export const useGenerate = () => {
 		}
 
 		try {
+			const startTime = performance.now();
+			console.log(`Generation started at ${new Date().toISOString()}`);
+			
 			// Use supabase's functions.invoke instead of fetch for better error handling
 			const { data, error: functionError } = await supabase.functions.invoke(
 				"compare-models",
@@ -16,6 +20,10 @@ export const useGenerate = () => {
 					body: { prompt },
 				},
 			);
+
+			const endTime = performance.now();
+			const elapsedSeconds = ((endTime - startTime) / 1000).toFixed(2);
+			console.log(`Generation completed in ${elapsedSeconds} seconds`);
 
 			if (functionError) {
 				throw new Error(functionError.message || "Failed to generate code");

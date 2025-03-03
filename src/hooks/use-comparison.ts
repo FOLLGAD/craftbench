@@ -1,40 +1,50 @@
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ComparisonType } from "@/types/comparison";
+import { toast } from "sonner";
+import { Comparison } from "@/types/comparison";
 
-export const useComparison = (comparisonId: string) => {
-  const [comparison, setComparison] = useState<ComparisonType | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const useComparison = (id: string) => {
+  const [loading, setLoading] = useState(true);
+  const [comparison, setComparison] = useState<Comparison | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!comparisonId) {
-      setIsLoading(false);
-      return;
-    }
+    if (!id) return;
 
     const fetchComparison = async () => {
+      setLoading(true);
       try {
-        setIsLoading(true);
         const { data, error } = await supabase
-          .from("comparisons")
-          .select("*")
-          .eq("id", comparisonId)
+          .from("mc-comparisons")
+          .select(`
+            id,
+            prompt,
+            generation_a_id,
+            generation_b_id,
+            created_at,
+            generation_a:mc-generations!generation_a_id(*),
+            generation_b:mc-generations!generation_b_id(*)
+          `)
+          .eq("id", id)
           .single();
 
-        if (error) throw error;
-        setComparison(data as ComparisonType);
+        if (error) throw new Error(error.message);
+        if (!data) throw new Error("Comparison not found");
+
+        setComparison(data as unknown as Comparison);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch comparison");
         console.error("Error fetching comparison:", err);
+        const message = err instanceof Error ? err.message : "Failed to fetch comparison";
+        setError(message);
+        toast.error(message);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
     fetchComparison();
-  }, [comparisonId]);
+  }, [id]);
 
-  return { comparison, isLoading, error };
+  return { comparison, loading, error };
 };
