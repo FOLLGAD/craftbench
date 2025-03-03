@@ -1,9 +1,11 @@
 import { VisibleScreenRenderer } from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useVote } from "@/hooks/use-vote";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDistance } from "date-fns";
 import { ShareIcon, ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -24,38 +26,38 @@ import {
 import { Textarea } from "../ui/textarea";
 import { Skeleton } from "../ui/skeleton";
 import { Link } from "react-router-dom";
-
 interface VoteComparisonProps {
 	comparisonId: string;
 	isVoting?: boolean;
 }
-
 const VoteComparison = ({
 	comparisonId,
 	isVoting: externalIsVoting = false,
 }: VoteComparisonProps) => {
 	const queryClient = useQueryClient();
 	const [isVoting, setIsVoting] = useState(externalIsVoting);
-
 	const { handleVote } = useVote();
-
 	const { data: voteData } = useQuery({
 		queryKey: ["vote", comparisonId],
 		queryFn: async () => {
 			const { data } = await supabase.auth.getUser();
-			if (!data?.user?.id) return { generationId: null };
+			if (!data?.user?.id)
+				return {
+					generationId: null,
+				};
 			return getVote(comparisonId, data.user.id);
 		},
 		enabled: true,
 	});
 	const myVote = voteData?.generationId;
 	const hasVoted = !!myVote;
-
 	const onVote = async (comparisonId: string, generationId: string) => {
 		try {
 			setIsVoting(true);
 			await handleVote(comparisonId, generationId);
-			queryClient.invalidateQueries({ queryKey: ["vote", comparisonId] });
+			queryClient.invalidateQueries({
+				queryKey: ["vote", comparisonId],
+			});
 			queryClient.invalidateQueries({
 				queryKey: ["comparison-votes", comparisonId],
 			});
@@ -72,17 +74,14 @@ const VoteComparison = ({
 	const formatModelName = (modelName: string) => {
 		return modelName;
 	};
-
 	const comparison = useQuery({
 		queryKey: ["comparison", comparisonId],
 		queryFn: () => getComparison(comparisonId),
 	});
-
 	const comparisonVotes = useQuery({
 		queryKey: ["comparison-votes", comparisonId],
 		queryFn: () => getComparisonVotes(comparisonId),
 	});
-
 	const generations = useMemo(
 		() =>
 			[comparison.data?.generation_a, comparison.data?.generation_b]
@@ -91,48 +90,54 @@ const VoteComparison = ({
 		[comparison.data],
 	);
 	const modelNames = generations.map((gen) => gen.model_name);
-
 	const modelRatings = useQuery({
 		queryKey: ["model-ratings", ...modelNames],
 		queryFn: () => getModelRatings(modelNames),
 		enabled: !!modelNames.length && !!myVote,
 	});
-
 	const totalVotes = Object.values(comparisonVotes.data || {}).reduce(
 		(sum, count) => sum + count,
 		0,
 	);
-
 	const getVotePercentage = (genId: string) => {
 		const voteCount = comparisonVotes.data?.[genId] || 0;
 		if (totalVotes === 0) return 0;
 		return Math.round((voteCount / totalVotes) * 100);
 	};
-
 	const adminCode = localStorage.getItem("admin_code") === "true";
-
 	const winner: string | "tie" | null = useMemo(() => {
 		const genAid = generations[0]?.id;
 		const genBid = generations[1]?.id;
-
 		if (!genAid || !genBid) return null;
-
 		const aVotes = comparisonVotes.data?.[genAid] || 0;
 		const bVotes = comparisonVotes.data?.[genBid] || 0;
 		if (aVotes === bVotes) return "tie";
 		return aVotes > bVotes ? genAid : genBid;
 	}, [comparisonVotes.data, generations]);
 
+	// Format the timestamp to show "x time ago"
+	const formatTimeAgo = (timestamp: string | null | undefined) => {
+		if (!timestamp) return "";
+		const date = new Date(timestamp);
+		return formatDistance(date, new Date(), {
+			addSuffix: true,
+		});
+	};
+
+	// Get full formatted date for title attribute
+	const formatFullDate = (timestamp: string | null | undefined) => {
+		if (!timestamp) return "";
+		const date = new Date(timestamp);
+		return date.toLocaleString();
+	};
 	return (
 		<div className="mb-8 shadow-lg rounded-lg p-4 border border-gray-200 bg-white">
 			{comparison.data ? (
 				<>
-					<div className="mb-6 py-0 text-center flex items-center justify-center">
+					<div className="py-0 text-center flex items-center justify-center">
 						<p className="text-gray-700 text-2xl font-semibold">
 							<Link
-								to={`/compare/${comparison.data.id}/${encodeURIComponent(
-									comparison.data.prompt.replace(/ /g, "-"),
-								)}`}
+								to={`/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`}
 								className="hover:underline text-blue-500"
 							>
 								"{comparison.data?.prompt.trim()}"
@@ -142,13 +147,21 @@ const VoteComparison = ({
 							className="w-4 h-4 ml-2 inline-block cursor-pointer text-gray-500 hover:text-gray-700 hover:underline"
 							onClick={() => {
 								navigator.clipboard.writeText(
-									`${window.location.origin}/compare/${comparison.data.id}/${encodeURIComponent(
-										comparison.data.prompt.replace(/ /g, "-"),
-									)}`,
+									`${window.location.origin}/compare/${comparison.data.id}/${encodeURIComponent(comparison.data.prompt.replace(/ /g, "-"))}`,
 								);
 								toast.success("Copied to clipboard");
 							}}
 						/>
+					</div>
+
+					{/* Added timestamp display */}
+					<div className="text-center mb-3">
+						<span
+							className="text-sm text-gray-500"
+							title={formatFullDate(comparison.data.created_at)}
+						>
+							{formatTimeAgo(comparison.data.created_at)}
+						</span>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,5 +275,4 @@ const VoteComparison = ({
 		</div>
 	);
 };
-
 export default VoteComparison;
