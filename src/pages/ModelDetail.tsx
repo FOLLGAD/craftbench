@@ -138,6 +138,7 @@ const ModelDetail = () => {
                       <TableHead>Prompt</TableHead>
                       <TableHead>Model A</TableHead>
                       <TableHead>Model B</TableHead>
+                      <TableHead>Result</TableHead>
                       <TableHead>View</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -153,32 +154,29 @@ const ModelDetail = () => {
                     (isModelA && winnerGenId === comparison.generation_a.id) || 
                     (isModelB && winnerGenId === comparison.generation_b.id);
                   
-                  return <TableRow 
-                            key={comparison.id} 
-                            className="cursor-pointer hover:bg-gray-800/40"
-                            onClick={() => window.location.href = `/compare/${comparison.id}`}
-                          >
+                  return <TableRow key={comparison.id}>
                           <TableCell>
                             {formatDistance(new Date(comparison.created_at), new Date(), {
                         addSuffix: true
                       })}
                           </TableCell>
                           <TableCell className="max-w-xs truncate">
-                            {comparison.prompt}
+                            <Link 
+                              to={`/compare/${comparison.id}`}
+                              className="text-primary hover:underline cursor-pointer"
+                            >
+                              {comparison.prompt}
+                            </Link>
                           </TableCell>
                           <TableCell className={isModelA ? "font-bold text-primary" : ""}>
-                            <div className="flex items-center gap-1">
-                              {modelA}
-                              {isModelA && isWinner && <Crown className="h-4 w-4 text-yellow-500" />}
-                              {isModelA && winner === 'tie' && <Badge variant="secondary" className="text-xs">Tie</Badge>}
-                            </div>
+                            {modelA}
                           </TableCell>
                           <TableCell className={isModelB ? "font-bold text-primary" : ""}>
-                            <div className="flex items-center gap-1">
-                              {modelB}
-                              {isModelB && isWinner && <Crown className="h-4 w-4 text-yellow-500" />}
-                              {isModelB && winner === 'tie' && <Badge variant="secondary" className="text-xs">Tie</Badge>}
-                            </div>
+                            {modelB}
+                          </TableCell>
+                          <TableCell>
+                            {isWinner && <Crown className="h-4 w-4 text-yellow-500" />}
+                            {winner === 'tie' && <Badge variant="secondary" className="text-xs">Tie</Badge>}
                           </TableCell>
                           <TableCell>
                             <Button size="sm" asChild>
