@@ -4,7 +4,7 @@ import { Trophy } from "lucide-react";
 import { ThemeToggle } from "../theme-toggle";
 const Header = () => {
   const navigate = useNavigate();
-  return <header className="bg-card border-b border-border py-4 px-[17px]">
+  return <header className="bg-card border-b border-border py-4 px-[17px] font-normal">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <Link to="/">
