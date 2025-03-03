@@ -6,7 +6,7 @@ import { useVote } from "@/hooks/use-vote";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistance } from "date-fns";
-import { ShareIcon, ThumbsUp } from "lucide-react";
+import { Crown, ShareIcon, ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getComparison, getComparisonVotes, getModelRatings, getVote } from "../../lib/models";
@@ -143,9 +143,9 @@ const VoteComparison = ({
 											{hasVoted ? formatModelName(generation.model_name) : `Model ${index + 1}`}
 										</h3>
 
-										{winner === generation.id && myVote && <Badge variant="default" className="bg-green-800">
-												Winner
-											</Badge>}
+										{winner === generation.id && myVote && 
+											<Crown className="h-5 w-5 text-yellow-500" />
+										}
 
 										{winner === "tie" && myVote && <Badge variant="secondary">Tie</Badge>}
 
