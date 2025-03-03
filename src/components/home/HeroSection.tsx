@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ const HeroSection = () => {
   };
   return <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
       <div className="max-w-3xl sm:p-8 w-full">
-        <h1 className="text-4xl font-bold mb-8 text-center text-primary">
+        <h1 className="text-4xl font-light mb-8 text-center text-white">
           Benchcraft
         </h1>
 

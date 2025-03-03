@@ -1,124 +1,86 @@
-
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import SceneRenderer from "@/components/SceneRenderer";
-import { useNavigate } from "react-router-dom";
-import posthog from "posthog-js";
-import { supabase } from "@/integrations/supabase/client";
-
+import { useEffect, useState } from "react";
+import Header from "@/components/compare/Header";
+import { Input } from "@/components/ui/input";
+import { Loader2, Sparkles } from "lucide-react";
+import { SceneRenderer } from "@/components/SceneRenderer";
+import { useParams } from "react-router-dom";
+import { useComparison } from "@/hooks/use-comparison";
 const Generate = () => {
-  const [prompt, setPrompt] = useState("");
-  const [generatedCode, setGeneratedCode] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [usedModel, setUsedModel] = useState("");
-  const navigate = useNavigate();
-
-  const handleGenerate = async () => {
-    if (!prompt.trim()) {
-      toast.error("Please enter a prompt");
-      return;
-    }
-
-    setIsGenerating(true);
-    posthog.capture("generate_started", { prompt_length: prompt.length });
-
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-voxel", {
-        body: { prompt }
-      });
-
-      if (error) {
-        throw new Error(error.message);
+  const {
+    comparisonId
+  } = useParams();
+  const {
+    comparison,
+    isLoading,
+    error
+  } = useComparison(comparisonId || "");
+  const [winner, setWinner] = useState(null);
+  useEffect(() => {
+    if (comparison?.likes) {
+      const modelNames = Object.keys(comparison.likes);
+      if (modelNames.length > 0) {
+        const winnerModel = modelNames.reduce((a, b) => comparison.likes[a] > comparison.likes[b] ? a : b);
+        setWinner(winnerModel);
       }
-
-      setGeneratedCode(data.code || "");
-      setUsedModel(data.model || "unknown model");
-      toast.success(`Code generated successfully using ${data.model}`);
-      posthog.capture("generate_success", { 
-        prompt_length: prompt.length,
-        model: data.model 
-      });
-    } catch (error) {
-      console.error("Error generating code:", error);
-      toast.error(`Error: ${error instanceof Error ? error.message : "Failed to generate code"}`);
-      posthog.capture("generate_error", { error: String(error) });
-    } finally {
-      setIsGenerating(false);
     }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden flex flex-col">
-      <header className="bg-black text-white p-4 shadow-md z-10 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Voxel Sculptor</h1>
-        <div className="flex gap-4">
-          <Button 
-            variant="outline" 
-            className="bg-transparent text-white border-white hover:bg-white/10"
-            onClick={() => navigate("/")}
-          >
-            Back to Editor
-          </Button>
-        </div>
-      </header>
-      
-      <div className="flex flex-col lg:flex-row h-full gap-6 p-6">
-        {/* Left side - Prompt and generated code */}
-        <div className="w-full lg:w-1/3 flex flex-col gap-5">
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5 overflow-hidden">
-            <h2 className="text-xl font-bold mb-3 text-gray-800">Generate Scene with AI</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Describe the scene you want to create, and an AI will generate the JavaScript code for you.
-            </p>
-            
-            <Textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="h-[120px] resize-none bg-gray-50 border-gray-300 focus:border-purple-400 focus:ring-purple-300 mb-4"
-              placeholder="Describe your scene (e.g., 'Create a small castle with a moat')"
-            />
-            
-            <Button 
-              onClick={handleGenerate}  
-              disabled={isGenerating}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-all duration-200 shadow-md mb-4"
-            >
-              {isGenerating ? "Generating..." : "Generate Code"}
-            </Button>
-            
-            {usedModel && (
-              <div className="text-xs text-gray-500 mt-2">
-                Generated using {usedModel}
-              </div>
-            )}
+  }, [comparison]);
+  if (isLoading) {
+    return <div>
+        <Header />
+        <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
+          <div className="max-w-3xl sm:p-8 w-full">
+            <h1 className="text-4xl font-light mb-8 text-center text-white">
+              Loading...
+            </h1>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5 overflow-hidden">
-            <h2 className="text-xl font-bold mb-3 text-gray-800">Generated Code</h2>
-            <Textarea
-              value={generatedCode}
-              onChange={(e) => setGeneratedCode(e.target.value)}
-              className="font-mono text-sm h-[300px] resize-none bg-gray-50 border-gray-300 focus:border-purple-400 focus:ring-purple-300"
-              placeholder="AI-generated code will appear here"
-            />
+        </section>
+      </div>;
+  }
+  if (error) {
+    return <div>
+        <Header />
+        <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
+          <div className="max-w-3xl sm:p-8 w-full">
+            <h1 className="text-4xl font-light mb-8 text-center text-white">
+              Error: {error}
+            </h1>
+          </div>
+        </section>
+      </div>;
+  }
+  if (!comparison) {
+    return <div>
+        <Header />
+        <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
+          <div className="max-w-3xl sm:p-8 w-full">
+            <h1 className="text-4xl font-light mb-8 text-center text-white">
+              Comparison not found
+            </h1>
+          </div>
+        </section>
+      </div>;
+  }
+  return <div>
+      <Header />
+      <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
+        <div className="max-w-5xl sm:p-8 w-full">
+          <h1 className="text-2xl font-bold mb-8 text-left text-white">
+            {comparison.prompt}
+          </h1>
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(comparison.images).map(([modelName, imageUrl]) => <div key={modelName} className="relative">
+                <SceneRenderer url={imageUrl} />
+                <div className="absolute bottom-2 left-2 bg-black/50 text-white p-1 rounded-md text-sm">
+                  {modelName}
+                </div>
+                {winner === modelName && <div className="absolute top-2 right-2 bg-yellow-500 text-black p-1 rounded-md text-sm">
+                    Winner
+                  </div>}
+              </div>)}
           </div>
         </div>
-        
-        {/* Right side - 3D view */}
-        <div className="w-full lg:w-2/3">
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5 h-full">
-            <h2 className="text-xl font-bold mb-3 text-gray-800">Preview</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Preview of your AI-generated scene. Click and drag to rotate. Scroll to zoom in/out.
-            </p>
-            <SceneRenderer code={generatedCode} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+      </section>
+    </div>;
 };
-
 export default Generate;
