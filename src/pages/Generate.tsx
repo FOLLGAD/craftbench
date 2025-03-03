@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import Header from "@/components/compare/Header";
@@ -6,6 +7,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { SceneRenderer } from "@/components/SceneRenderer";
 import { useParams } from "react-router-dom";
 import { useComparison } from "@/hooks/use-comparison";
+
 const Generate = () => {
   const {
     comparisonId
@@ -15,7 +17,8 @@ const Generate = () => {
     isLoading,
     error
   } = useComparison(comparisonId || "");
-  const [winner, setWinner] = useState(null);
+  const [winner, setWinner] = useState<string | null>(null);
+  
   useEffect(() => {
     if (comparison?.likes) {
       const modelNames = Object.keys(comparison.likes);
@@ -25,6 +28,7 @@ const Generate = () => {
       }
     }
   }, [comparison]);
+  
   if (isLoading) {
     return <div>
         <Header />
@@ -37,6 +41,7 @@ const Generate = () => {
         </section>
       </div>;
   }
+  
   if (error) {
     return <div>
         <Header />
@@ -49,6 +54,7 @@ const Generate = () => {
         </section>
       </div>;
   }
+  
   if (!comparison) {
     return <div>
         <Header />
@@ -61,6 +67,7 @@ const Generate = () => {
         </section>
       </div>;
   }
+  
   return <div>
       <Header />
       <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
@@ -69,18 +76,21 @@ const Generate = () => {
             {comparison.prompt}
           </h1>
           <div className="grid grid-cols-2 gap-4">
-            {Object.entries(comparison.images).map(([modelName, imageUrl]) => <div key={modelName} className="relative">
-                <SceneRenderer url={imageUrl} />
+            {Object.entries(comparison.images).map(([modelName, imageUrl]) => (
+              <div key={modelName} className="relative">
+                <SceneRenderer sceneUrl={imageUrl as string} />
                 <div className="absolute bottom-2 left-2 bg-black/50 text-white p-1 rounded-md text-sm">
                   {modelName}
                 </div>
                 {winner === modelName && <div className="absolute top-2 right-2 bg-yellow-500 text-black p-1 rounded-md text-sm">
                     Winner
                   </div>}
-              </div>)}
+              </div>
+            ))}
           </div>
         </div>
       </section>
     </div>;
 };
+
 export default Generate;

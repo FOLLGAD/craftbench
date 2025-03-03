@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Trophy } from "lucide-react";
-import { ThemeToggle } from "../theme-toggle";
+
 const Header = () => {
   const navigate = useNavigate();
   return <header className="bg-card border-b border-border py-4 px-[17px] font-light">
@@ -17,7 +17,6 @@ const Header = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           <Button variant="default" onClick={() => navigate("/leaderboard")}>
             <Trophy className="mr-2 h-4 w-4" />
             Leaderboard
