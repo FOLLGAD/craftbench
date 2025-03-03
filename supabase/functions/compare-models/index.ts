@@ -58,6 +58,8 @@ fill(1, 0, 0, 2, 5, 1, "stone");
 
 You should be creative, but remember: respond ONLY with plain JavaScript code, using ONLY vanilla JS and the two provided functions.
 Be creative with the materials and shapes, this is a competition! The best design wins!
+
+Use the space you have. Don't be afraid to use the entire 40x40x40 space! More detail is generally better.
 `.trim();
 };
 
