@@ -51,13 +51,14 @@ IMPORTANT: Stay within the coordinate range of -20 to 20 for all x, y, and z val
 Your materials are:
 ${AVAILABLE_MATERIALS.join(", ")}
 
-Here is an example:
+Here is an example for a 6 block high 2x2 stone pillar:
 \`\`\`
-// create a 6 block high 2x2 stone pillar
 fill(1, 0, 0, 2, 5, 1, "stone");
 \`\`\`
 
-You can be creative, but remember: respond ONLY with plain JavaScript code, using ONLY vanilla JS and the two provided functions.`;
+You should be creative, but remember: respond ONLY with plain JavaScript code, using ONLY vanilla JS and the two provided functions.
+Be creative with the materials and shapes, this is a competition! The best design wins!
+`.trim();
 };
 
 // Function to extract code from potential code fences

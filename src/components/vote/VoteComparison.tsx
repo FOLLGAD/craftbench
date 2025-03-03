@@ -1,19 +1,18 @@
 import { VisibleScreenRenderer } from "@/components/SceneRenderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useVote } from "@/hooks/use-vote";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistance } from "date-fns";
 import { Crown, ShareIcon, ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { getComparison, getComparisonVotes, getModelRatings, getVote } from "../../lib/models";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { Textarea } from "../ui/textarea";
 import { Skeleton } from "../ui/skeleton";
-import { Link } from "react-router-dom";
+import { Textarea } from "../ui/textarea";
 interface VoteComparisonProps {
   comparisonId: string;
   isVoting?: boolean;
