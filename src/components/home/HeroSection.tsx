@@ -34,7 +34,7 @@ const HeroSection = () => {
           if (e.key === "Enter" && prompt.trim() && !creatingComparison) {
             handleCreateComparison();
           }
-        }} className="pr-16 py-6 text-lg rounded-full border-2 border-gray-300 focus-visible:ring-green-700 mb-4 pl-6" />
+        }} className="pr-16 py-6 text-base rounded-full border-2 border-gray-300 focus-visible:ring-green-700 mb-4 pl-6" />
 					<div className="sm:absolute right-0 top-0 bottom-0 h-full flex items-center justify-center pr-1.5">
 						<Button onClick={handleCreateComparison} disabled={!prompt.trim() || creatingComparison} aria-label="Generate with models" className="text-white rounded-full bg-lime-950 hover:bg-lime-800">
 							{creatingComparison ? <>
