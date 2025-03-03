@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.204.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -129,7 +130,10 @@ async function generateCodeWithModel(
   supabase: any
 ) {
   try {
-    console.log(`Starting generation with ${modelId}`);
+    // Start the timer for this model
+    const startTime = performance.now();
+    console.log(`Starting generation with ${modelId} at ${new Date().toISOString()}`);
+    
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -173,6 +177,12 @@ async function generateCodeWithModel(
       } catch (e) {
         errorData = { error: { message: "API returned an error" } };
       }
+      
+      // End timer even in error case
+      const endTime = performance.now();
+      const executionTimeMs = endTime - startTime;
+      console.log(`Model ${modelId} failed after: ${executionTimeMs.toFixed(2)}ms`);
+      
       throw new Error(
         errorData.error?.message || `Failed to generate code with ${modelId}`
       );
@@ -187,6 +197,11 @@ async function generateCodeWithModel(
 
     // Extract code if the content contains code fences
     const generatedCode = extractCodeFromResponse(rawContent);
+
+    // End timer and log execution time
+    const endTime = performance.now();
+    const executionTimeMs = endTime - startTime;
+    console.log(`Model ${modelId} took: ${executionTimeMs.toFixed(2)}ms`);
 
     console.log(`Successfully generated code with ${modelId}`);
 
@@ -374,10 +389,19 @@ serve(async (req) => {
 
     // Generate code with both models concurrently with no timeouts
     try {
+      // Log the start of the overall generation process
+      const overallStartTime = performance.now();
+      console.log(`Starting generation for two models at ${new Date().toISOString()}`);
+      
       const [generation1, generation2] = await Promise.all([
         generateCodeWithModel(modelChoices[0], prompt, supabase),
         generateCodeWithModel(modelChoices[1], prompt, supabase),
       ]);
+
+      // Log the end of the overall generation process
+      const overallEndTime = performance.now();
+      const overallExecutionTimeMs = overallEndTime - overallStartTime;
+      console.log(`Total generation process took: ${overallExecutionTimeMs.toFixed(2)}ms`);
 
       const generations = [generation1, generation2];
       const shuffledOrder = Math.random() > 0.5 ? [0, 1] : [1, 0];
