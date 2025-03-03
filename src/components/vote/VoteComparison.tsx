@@ -163,7 +163,7 @@ const VoteComparison = ({
 												</DialogContent>
 											</Dialog>}
 									</div>
-									{hasVoted && modelRatings.data?.[generation.model_name] && <div className="flex items-center gap-2 justify-between w-full">
+									{hasVoted && modelRatings.data?.[generation.model_name] && <div className="flex items-center gap-2 justify-between w-full min-h-[24px]">
 											<p className="text-sm text-gray-600">
 												Elo: {modelRatings.data[generation.model_name]}
 											</p>
