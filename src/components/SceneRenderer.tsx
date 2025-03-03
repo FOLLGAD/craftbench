@@ -61,13 +61,22 @@ class SceneManager {
 		this.controls.enableDamping = true;
 		this.controls.dampingFactor = 0.05;
 
-		// Lighting
-		const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+		// Ambient lighting
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 		this.scene.add(ambientLight);
 
-		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-		directionalLight.position.set(5, 10, 7.5);
-		directionalLight.castShadow = true;
+		// // 3-point lighting
+		const light1 = new THREE.DirectionalLight(0xffffff, 0.5);
+		light1.position.set(50, -50, 50);
+		this.scene.add(light1);
+
+		const light2 = new THREE.DirectionalLight(0xffffff, 0.5);
+		light2.position.set(-50, -50, -50);
+		this.scene.add(light2);
+
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+		directionalLight.position.set(50, -50, 50);
+		directionalLight.castShadow = false;
 		directionalLight.shadow.mapSize.width = 1024;
 		directionalLight.shadow.mapSize.height = 1024;
 		this.scene.add(directionalLight);
@@ -81,7 +90,7 @@ class SceneManager {
 		const width = canvas.clientWidth;
 		const height = canvas.clientHeight;
 		const needResize = canvas.width !== width || canvas.height !== height;
-		
+
 		if (needResize) {
 			this.renderer.setSize(width, height, false);
 			this.camera.aspect = width / height;
@@ -323,12 +332,13 @@ export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 
 	// Update canvas size based on container size
 	const updateCanvasSize = useCallback(() => {
-		if (!containerRef.current || !canvasRef.current || !sceneManagerRef.current) return;
-		
+		if (!containerRef.current || !canvasRef.current || !sceneManagerRef.current)
+			return;
+
 		const container = containerRef.current;
 		const canvas = canvasRef.current;
 		const rect = container.getBoundingClientRect();
-		
+
 		// Only update if size actually changed
 		if (canvas.width !== rect.width || canvas.height !== rect.height) {
 			sceneManagerRef.current.handleResize();
@@ -344,8 +354,8 @@ export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		const rect = container.getBoundingClientRect();
 
 		// Set initial size
-		canvas.style.width = '100%';
-		canvas.style.height = '100%';
+		canvas.style.width = "100%";
+		canvas.style.height = "100%";
 		canvas.width = rect.width;
 		canvas.height = rect.height;
 

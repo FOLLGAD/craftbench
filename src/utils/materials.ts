@@ -29,15 +29,19 @@ export class MaterialManager {
 
 	// Method to check if a block type is a fence
 	public isFenceType(blockType: string): boolean {
-		const blockInfo = blockTypes.find(block => block.name === blockType.toLowerCase());
+		const blockInfo = blockTypes.find(
+			(block) => block.name === blockType.toLowerCase(),
+		);
 		return blockInfo ? !!blockInfo.isFence : false;
 	}
 
 	// Method to get fence properties for a block type
-	public getFenceProperties(blockType: string): any {
-		const blockInfo = blockTypes.find(block => block.name === blockType.toLowerCase());
+	public getFenceProperties(blockType: string) {
+		const blockInfo = blockTypes.find(
+			(block) => block.name === blockType.toLowerCase(),
+		);
 		if (!blockInfo || !blockInfo.isFence) return null;
-		
+
 		return {
 			postWidth: blockInfo.postWidth || 0.25,
 			railHeight1: blockInfo.railHeight1 || 0.3,
@@ -106,6 +110,7 @@ export class MaterialManager {
 				blockType.name === "water" ||
 				blockType.name === "ice"
 			) {
+				// Transparent materials
 				this.materials.set(
 					blockType.name,
 					new THREE.MeshPhysicalMaterial({
@@ -116,11 +121,13 @@ export class MaterialManager {
 						metalness: blockType.metalness,
 						normalMap: normalMap,
 						normalScale: blockType.normalScale,
-						clearcoat: 0.3,
-						clearcoatRoughness: 0.2,
+						clearcoat: blockType.metalness > 0.3 ? 0.3 : 0,
+						clearcoatRoughness: blockType.metalness > 0.3 ? 0.2 : 0.5,
+						reflectivity: blockType.metalness > 0.3 ? 0.5 : 0.1,
 					}),
 				);
 			} else if (blockType.name === "lava") {
+				// Emissive materials
 				this.materials.set(
 					blockType.name,
 					new THREE.MeshStandardMaterial({
@@ -134,8 +141,10 @@ export class MaterialManager {
 					}),
 				);
 			} else if (
-				["diamond", "emerald", "gold", "iron"].includes(blockType.name)
+				["diamond", "emerald", "gold", "iron"].includes(blockType.name) ||
+				blockType.metalness > 0.5
 			) {
+				// Metallic/reflective materials
 				this.materials.set(
 					blockType.name,
 					new THREE.MeshPhysicalMaterial({
@@ -144,20 +153,20 @@ export class MaterialManager {
 						metalness: blockType.metalness,
 						normalMap: normalMap,
 						normalScale: blockType.normalScale,
-						clearcoat: blockType.clearcoat,
-						clearcoatRoughness: blockType.clearcoatRoughness,
+						clearcoat: blockType.clearcoat || 0.5,
+						clearcoatRoughness: blockType.clearcoatRoughness || 0.1,
 						reflectivity: 1.0,
 					}),
 				);
 			} else {
 				this.materials.set(
 					blockType.name,
-					new THREE.MeshStandardMaterial({
+					new THREE.MeshLambertMaterial({
 						color: blockType.color,
-						roughness: blockType.roughness,
-						metalness: blockType.metalness,
 						normalMap: normalMap,
 						normalScale: blockType.normalScale,
+						emissive: new THREE.Color(0x000000), // No emission
+						reflectivity: 0.1, // Minimal reflectivity
 					}),
 				);
 			}
