@@ -105,6 +105,38 @@ export type Database = {
           },
         ]
       }
+      "mc-comments": {
+        Row: {
+          comparison_id: string
+          content: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comparison_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Update: {
+          comparison_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mc-comments_comparison_id_fkey"
+            columns: ["comparison_id"]
+            isOneToOne: false
+            referencedRelation: "mc-comparisons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       "mc-comparisons": {
         Row: {
           created_at: string | null
@@ -422,7 +454,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_comment_count: {
+        Args: {
+          comparison_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       org_role: "owner" | "member"

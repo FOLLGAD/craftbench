@@ -8,12 +8,7 @@ import { formatDistance } from "date-fns";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  Comment, 
-  addComment, 
-  deleteComment, 
-  getComparisonComments 
-} from "@/lib/models";
+import { Comment } from "@/types/comparison";
 
 interface CommentSectionProps {
   comparisonId: string;
@@ -36,13 +31,59 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comparisonId }) => {
   // Fetch comments
   const { data: comments, isLoading } = useQuery({
     queryKey: ["comparison-comments", comparisonId],
-    queryFn: () => getComparisonComments(comparisonId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mc-comments")
+        .select("*")
+        .eq("comparison_id", comparisonId)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      
+      // Fetch user information for all comments
+      const userIds = data.map(comment => comment.user_id);
+      const uniqueUserIds = [...new Set(userIds)];
+      
+      if (uniqueUserIds.length > 0) {
+        const { data: userData, error: userError } = await supabase
+          .from("user")
+          .select("user_id, name")
+          .in("user_id", uniqueUserIds);
+          
+        if (!userError && userData) {
+          // Create a map of user_id to name
+          const userMap = userData.reduce((acc, user) => {
+            acc[user.user_id] = user.name || "Anonymous User";
+            return acc;
+          }, {} as Record<string, string>);
+          
+          // Add user_name to each comment
+          return data.map(comment => ({
+            ...comment,
+            user_name: userMap[comment.user_id] || "Anonymous User"
+          })) as Comment[];
+        }
+      }
+      
+      return data as Comment[];
+    },
     refetchOnWindowFocus: false,
   });
   
   // Add comment mutation
   const addCommentMutation = useMutation({
-    mutationFn: (content: string) => addComment(comparisonId, content),
+    mutationFn: async (content: string) => {
+      const { data, error } = await supabase
+        .from("mc-comments")
+        .insert({
+          comparison_id: comparisonId,
+          content
+        })
+        .select();
+        
+      if (error) throw error;
+      return data[0];
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comparison-comments", comparisonId] });
       setNewComment("");
@@ -55,7 +96,16 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comparisonId }) => {
   
   // Delete comment mutation
   const deleteCommentMutation = useMutation({
-    mutationFn: (commentId: string) => deleteComment(commentId),
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase
+        .from("mc-comments")
+        .delete()
+        .eq("id", commentId)
+        .eq("user_id", authData?.id || "");
+        
+      if (error) throw error;
+      return true;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comparison-comments", comparisonId] });
       toast.success("Comment deleted");
