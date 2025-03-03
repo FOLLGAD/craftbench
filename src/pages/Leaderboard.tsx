@@ -1,3 +1,4 @@
+
 import Header from "@/components/compare/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,11 +8,15 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Medal, Trophy } from "lucide-react";
 import { useState } from "react";
 import Footer from "@/components/common/Footer";
+import { Link } from "react-router-dom";
+
 type SortField = "elo" | "wins" | "losses" | "winRate";
 type SortDirection = "asc" | "desc";
+
 const Leaderboard = () => {
   const [sortField, setSortField] = useState<SortField>("elo");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
   const {
     data: modelStats,
     isLoading,
@@ -20,6 +25,7 @@ const Leaderboard = () => {
     queryKey: ["model-stats"],
     queryFn: getAllModelStats
   });
+
   const handleSort = (field: SortField) => {
     if (field === sortField) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -28,20 +34,25 @@ const Leaderboard = () => {
       setSortDirection("desc");
     }
   };
+
   const sortedModels = modelStats ? [...modelStats].sort((a, b) => {
     const multiplier = sortDirection === "asc" ? 1 : -1;
     return (a[sortField] - b[sortField]) * multiplier;
   }) : [];
+
   const getTopModels = (field: SortField, count = 3) => {
     if (!modelStats) return [];
     return [...modelStats].sort((a, b) => b[field] - a[field]).slice(0, count);
   };
+
   const topEloModels = getTopModels("elo");
   const topWinRateModels = getTopModels("winRate");
+
   const getSortIcon = (field: SortField) => {
     if (field !== sortField) return null;
     return sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
+
   if (isLoading) {
     return <div className="min-h-screen bg-gray-50 flex flex-col w-full">
 				<Header />
@@ -52,6 +63,7 @@ const Leaderboard = () => {
 				<Footer />
 			</div>;
   }
+
   if (error) {
     return <div className="container mx-auto py-10">
 				<h1 className="text-3xl font-bold mb-6">Model Leaderboard</h1>
@@ -60,6 +72,7 @@ const Leaderboard = () => {
 				</p>
 			</div>;
   }
+
   return <div className="min-h-screen bg-gray-50 flex flex-col">
 			<Header />
 			<div className="container mx-auto py-10 flex-grow bg-slate-950">
@@ -83,7 +96,9 @@ const Leaderboard = () => {
 											{index === 0 ? <Medal className="h-4 w-4 text-yellow-500" /> : index === 1 ? <Medal className="h-4 w-4 text-gray-400" /> : <Medal className="h-4 w-4 text-amber-700" />}
 										</div>
 										<div>
-											<p className="font-medium">{model.modelName}</p>
+											<Link to={`/models?model_name=${encodeURIComponent(model.modelName)}`} className="font-medium hover:underline text-blue-400">
+												{model.modelName}
+											</Link>
 											<p className="text-sm text-muted-foreground">
 												{model.wins} wins, {model.losses} losses
 											</p>
@@ -111,7 +126,9 @@ const Leaderboard = () => {
 											{index === 0 ? <Medal className="h-4 w-4 text-yellow-500" /> : index === 1 ? <Medal className="h-4 w-4 text-gray-400" /> : <Medal className="h-4 w-4 text-amber-700" />}
 										</div>
 										<div>
-											<p className="font-medium">{model.modelName}</p>
+											<Link to={`/models?model_name=${encodeURIComponent(model.modelName)}`} className="font-medium hover:underline text-blue-400">
+												{model.modelName}
+											</Link>
 											<p className="text-sm text-muted-foreground">
 												{model.wins} wins, {model.losses} losses
 											</p>
@@ -169,7 +186,9 @@ const Leaderboard = () => {
 										{sortedModels.map((model, index) => <TableRow key={model.modelName}>
 												<TableCell>{index + 1}</TableCell>
 												<TableCell className="font-medium">
-													{model.modelName}
+													<Link to={`/models?model_name=${encodeURIComponent(model.modelName)}`} className="hover:underline text-blue-400">
+														{model.modelName}
+													</Link>
 												</TableCell>
 												<TableCell>{model.elo}</TableCell>
 												<TableCell>{model.wins}</TableCell>
@@ -222,7 +241,9 @@ const Leaderboard = () => {
 										{sortedModels.slice(0, 10).map((model, index) => <TableRow key={model.modelName}>
 												<TableCell>{index + 1}</TableCell>
 												<TableCell className="font-medium">
-													{model.modelName}
+													<Link to={`/models?model_name=${encodeURIComponent(model.modelName)}`} className="hover:underline text-blue-400">
+														{model.modelName}
+													</Link>
 												</TableCell>
 												<TableCell>{model.elo}</TableCell>
 												<TableCell>{model.wins}</TableCell>
@@ -239,4 +260,5 @@ const Leaderboard = () => {
 			<Footer />
 		</div>;
 };
+
 export default Leaderboard;

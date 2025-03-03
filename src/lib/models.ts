@@ -16,6 +16,7 @@ export const getComparison = async (comparisonId: string) => {
   }
   return data[0];
 };
+
 export const getModelRatings = async (modelNames: string[]) => {
   if (!modelNames.length) return {};
 
@@ -33,6 +34,7 @@ export const getModelRatings = async (modelNames: string[]) => {
     return acc;
   }, {});
 };
+
 export const getComparisonVotes = async (comparisonId: string) => {
   const { data, error } = await supabase
     .from("mc-votes")
@@ -47,6 +49,7 @@ export const getComparisonVotes = async (comparisonId: string) => {
   }, {} as Record<string, number>);
   return votes;
 };
+
 export const getVote = async (comparisonId: string, userId: string) => {
   const { data, error } = await supabase
     .from("mc-votes")
@@ -171,4 +174,43 @@ export const getAllModelStats = async () => {
   });
 
   return modelStats;
+};
+
+export const getModelComparisons = async (modelName: string, page = 1, pageSize = 10) => {
+  // First, get generation IDs for the specified model
+  const { data: generations, error: generationsError } = await supabase
+    .from("mc-generations")
+    .select("id")
+    .eq("model_name", modelName);
+
+  if (generationsError) {
+    throw new Error(generationsError.message);
+  }
+
+  if (!generations.length) {
+    return { data: [], count: 0 };
+  }
+
+  const generationIds = generations.map(gen => gen.id);
+
+  // Get comparisons where this model was either generation_a or generation_b
+  const { data: comparisons, error: comparisonsError, count } = await supabase
+    .from("mc-comparisons")
+    .select(
+      `
+      *,
+      generation_a:mc-generations!generation_a_id(*),
+      generation_b:mc-generations!generation_b_id(*)
+      `,
+      { count: 'exact' }
+    )
+    .or(`generation_a_id.in.(${generationIds.join(',')}),generation_b_id.in.(${generationIds.join(',')})`)
+    .order('created_at', { ascending: false })
+    .range((page - 1) * pageSize, page * pageSize - 1);
+
+  if (comparisonsError) {
+    throw new Error(comparisonsError.message);
+  }
+
+  return { data: comparisons, count: count || 0 };
 };
