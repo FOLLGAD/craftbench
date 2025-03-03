@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { Trophy } from "lucide-react";
 const Header = () => {
   const navigate = useNavigate();
-  return <header className="bg-white shadow-sm border-b border-gray-200 py-4 px-6">
+  return <header className="bg-white shadow-sm border-b border-gray-200 py-4 px-[17px]">
 			<div className="flex items-center justify-between">
 				<div className="flex items-center">
 					<Link to="/">
