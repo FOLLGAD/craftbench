@@ -1,18 +1,14 @@
-
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Trophy } from "lucide-react";
 import { ThemeToggle } from "../theme-toggle";
-
 const Header = () => {
   const navigate = useNavigate();
-  
-  return (
-    <header className="bg-card border-b border-border py-4 px-[17px]">
+  return <header className="bg-card border-b border-border py-4 px-[17px]">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <Link to="/">
-            <h1 className="text-2xl font-bold text-primary">Benchcraft</h1>
+            <h1 className="text-2xl font-bold text-white">Benchcraft</h1>
           </Link>
           <span className="hidden md:inline-block text-sm text-muted-foreground ml-4">
             Best AI benchmark – compare LLMs on spatiovisual tasks
@@ -27,8 +23,6 @@ const Header = () => {
           </Button>
         </div>
       </div>
-    </header>
-  );
+    </header>;
 };
-
 export default Header;

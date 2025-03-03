@@ -23,7 +23,7 @@ const HeroSection = () => {
       setCreatingComparison(false);
     }
   };
-  return <section className="mb-12 pt-6 w-full flex justify-center">
+  return <section className="mb-12 pt-6 w-full flex justify-center text-white">
       <div className="max-w-3xl sm:p-8 w-full">
         <h1 className="text-4xl font-bold mb-8 text-center text-primary">
           Benchcraft
@@ -34,7 +34,7 @@ const HeroSection = () => {
           if (e.key === "Enter" && prompt.trim() && !creatingComparison) {
             handleCreateComparison();
           }
-        }} className="pr-16 py-6 text-base rounded-full border border-border focus-visible:ring-primary mb-4 pl-6" />
+        }} className="pr-16 py-6 text-base rounded-full border-2 border-border focus-visible:ring-primary mb-4 pl-6" />
           <div className="sm:absolute right-0 top-0 bottom-0 h-full flex items-center justify-center pr-1.5">
             <Button onClick={handleCreateComparison} disabled={!prompt.trim() || creatingComparison} aria-label="Generate with models" className="text-primary-foreground rounded-full bg-primary hover:bg-primary/90">
               {creatingComparison ? <>
