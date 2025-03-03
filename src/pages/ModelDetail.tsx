@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Header from "@/components/compare/Header";
@@ -7,17 +8,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useQuery } from "@tanstack/react-query";
-import { getModelComparisons } from "@/lib/models";
+import { getModelComparisons, getComparisonVotes } from "@/lib/models";
 import { formatDistance } from "date-fns";
+import { Crown, Trophy } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
 const PAGE_SIZE = 10;
+
 const ModelDetail = () => {
   const [searchParams] = useSearchParams();
   const modelName = searchParams.get("model_name") || "";
   const [page, setPage] = useState(1);
+  
   useEffect(() => {
     // Reset to page 1 when model changes
     setPage(1);
   }, [modelName]);
+
   const {
     data: comparisonData,
     isLoading,
@@ -27,9 +34,48 @@ const ModelDetail = () => {
     queryFn: () => getModelComparisons(modelName, page, PAGE_SIZE),
     enabled: !!modelName
   });
+
   const comparisons = comparisonData?.data || [];
   const totalComparisons = comparisonData?.count || 0;
   const totalPages = Math.max(1, Math.ceil(totalComparisons / PAGE_SIZE));
+
+  // Fetch votes for all comparisons to determine winners
+  const comparisonIds = comparisons.map(comparison => comparison.id);
+  const votesQueries = useQuery({
+    queryKey: ["comparison-votes-batch", comparisonIds],
+    queryFn: async () => {
+      if (comparisonIds.length === 0) return {};
+      
+      const results: Record<string, Record<string, number>> = {};
+      
+      await Promise.all(
+        comparisonIds.map(async (id) => {
+          try {
+            const votes = await getComparisonVotes(id);
+            results[id] = votes;
+          } catch (e) {
+            console.error(`Error fetching votes for comparison ${id}:`, e);
+            results[id] = {};
+          }
+        })
+      );
+      
+      return results;
+    },
+    enabled: comparisonIds.length > 0
+  });
+  
+  const getWinner = (comparison: any) => {
+    if (!votesQueries.data) return null;
+    
+    const votes = votesQueries.data[comparison.id] || {};
+    const votesA = votes[comparison.generation_a.id] || 0;
+    const votesB = votes[comparison.generation_b.id] || 0;
+    
+    if (votesA === votesB) return "tie";
+    return votesA > votesB ? comparison.generation_a.id : comparison.generation_b.id;
+  };
+
   if (!modelName) {
     return <div className="min-h-screen bg-slate-950 flex flex-col">
         <Header />
@@ -43,6 +89,7 @@ const ModelDetail = () => {
         <Footer />
       </div>;
   }
+
   if (isLoading) {
     return <div className="min-h-screen bg-slate-950 flex flex-col">
         <Header />
@@ -53,6 +100,7 @@ const ModelDetail = () => {
         <Footer />
       </div>;
   }
+
   if (error) {
     return <div className="min-h-screen bg-slate-950 flex flex-col">
         <Header />
@@ -63,6 +111,7 @@ const ModelDetail = () => {
         <Footer />
       </div>;
   }
+
   return <div className="min-h-screen bg-slate-950 flex flex-col">
       <Header />
       <div className="container mx-auto py-10 flex-grow">
@@ -98,7 +147,17 @@ const ModelDetail = () => {
                   const modelB = comparison.generation_b?.model_name;
                   const isModelA = modelA === modelName;
                   const isModelB = modelB === modelName;
-                  return <TableRow key={comparison.id}>
+                  const winner = getWinner(comparison);
+                  const winnerGenId = winner === 'tie' ? null : winner;
+                  const isWinner = 
+                    (isModelA && winnerGenId === comparison.generation_a.id) || 
+                    (isModelB && winnerGenId === comparison.generation_b.id);
+                  
+                  return <TableRow 
+                            key={comparison.id} 
+                            className="cursor-pointer hover:bg-gray-800/40"
+                            onClick={() => window.location.href = `/compare/${comparison.id}`}
+                          >
                           <TableCell>
                             {formatDistance(new Date(comparison.created_at), new Date(), {
                         addSuffix: true
@@ -108,10 +167,18 @@ const ModelDetail = () => {
                             {comparison.prompt}
                           </TableCell>
                           <TableCell className={isModelA ? "font-bold text-primary" : ""}>
-                            {modelA}
+                            <div className="flex items-center gap-1">
+                              {modelA}
+                              {isModelA && isWinner && <Crown className="h-4 w-4 text-yellow-500" />}
+                              {isModelA && winner === 'tie' && <Badge variant="secondary" className="text-xs">Tie</Badge>}
+                            </div>
                           </TableCell>
                           <TableCell className={isModelB ? "font-bold text-primary" : ""}>
-                            {modelB}
+                            <div className="flex items-center gap-1">
+                              {modelB}
+                              {isModelB && isWinner && <Crown className="h-4 w-4 text-yellow-500" />}
+                              {isModelB && winner === 'tie' && <Badge variant="secondary" className="text-xs">Tie</Badge>}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Button size="sm" asChild>
@@ -164,4 +231,5 @@ const ModelDetail = () => {
       <Footer />
     </div>;
 };
+
 export default ModelDetail;
