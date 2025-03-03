@@ -126,7 +126,7 @@ const Home = () => {
 					<div className="mb-8">
 						<div className="flex justify-between items-center mb-6">
 							<h2 className="text-2xl font-bold text-gray-800">
-								Recent benches
+								Recent generations
 							</h2>
 							<div className="flex items-center gap-2">
 								<Button

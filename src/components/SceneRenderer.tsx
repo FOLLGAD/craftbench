@@ -39,19 +39,19 @@ class SceneManager {
 		// Camera
 		this.camera = new THREE.PerspectiveCamera(
 			75,
-			window.innerWidth / window.innerHeight,
+			canvas.width / canvas.height,
 			0.1,
 			1000,
 		);
-		this.camera.position.set(25, 15, 25);
-		this.camera.lookAt(0, -10, 0);
+		this.camera.position.set(20, 10, 20);
+		this.camera.lookAt(0, 0, 0);
 
 		// Renderer
 		this.renderer = new THREE.WebGLRenderer({
 			canvas,
 			antialias: true,
 		});
-		this.renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+		this.renderer.setSize(canvas.width, canvas.height);
 		this.renderer.setPixelRatio(window.devicePixelRatio);
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -77,9 +77,16 @@ class SceneManager {
 	}
 
 	handleResize = () => {
-		this.camera.aspect = window.innerWidth / window.innerHeight;
-		this.camera.updateProjectionMatrix();
-		this.renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
+		const canvas = this.renderer.domElement;
+		const width = canvas.clientWidth;
+		const height = canvas.clientHeight;
+		const needResize = canvas.width !== width || canvas.height !== height;
+		
+		if (needResize) {
+			this.renderer.setSize(width, height, false);
+			this.camera.aspect = width / height;
+			this.camera.updateProjectionMatrix();
+		}
 	};
 
 	animate = () => {
@@ -98,7 +105,7 @@ class SceneManager {
 			this.camera.position.z = radius * Math.cos(this.autoRotateAngle);
 
 			// Keep the camera looking at the center
-			this.camera.lookAt(0, -10, 0);
+			this.camera.lookAt(0, 0, 0);
 		}
 
 		this.controls.update();
@@ -260,7 +267,7 @@ class SceneManager {
 
 			const matrix = new THREE.Matrix4();
 			positions.forEach((pos, index) => {
-				matrix.setPosition(...pos);
+				matrix.setPosition(pos[0], pos[1], pos[2]);
 				instancedMesh.setMatrixAt(index, matrix);
 				this.blockPositions.set(posKeys[index], instancedMesh);
 			});
@@ -302,20 +309,47 @@ class SceneManager {
 		this.renderer.dispose();
 		this.controls.dispose();
 	}
+
+	clearBlocks() {
+		this.removeBlocksAtPositions(Array.from(this.blockPositions.keys()));
+	}
 }
 
 export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 	const sceneManagerRef = useRef<SceneManager | null>(null);
 	const [inited, setInited] = useState(false);
 
-	useEffect(() => {}, []); // Remove the unnecessary code dependency
+	// Update canvas size based on container size
+	const updateCanvasSize = useCallback(() => {
+		if (!containerRef.current || !canvasRef.current || !sceneManagerRef.current) return;
+		
+		const container = containerRef.current;
+		const canvas = canvasRef.current;
+		const rect = container.getBoundingClientRect();
+		
+		// Only update if size actually changed
+		if (canvas.width !== rect.width || canvas.height !== rect.height) {
+			sceneManagerRef.current.handleResize();
+		}
+	}, []);
 
 	// Initialize Three.js scene
 	useEffect(() => {
-		if (!canvasRef.current) return;
+		if (!canvasRef.current || !containerRef.current) return;
 
-		const sceneManager = new SceneManager(canvasRef.current);
+		const container = containerRef.current;
+		const canvas = canvasRef.current;
+		const rect = container.getBoundingClientRect();
+
+		// Set initial size
+		canvas.style.width = '100%';
+		canvas.style.height = '100%';
+		canvas.width = rect.width;
+		canvas.height = rect.height;
+
+		const sceneManager = new SceneManager(canvas);
 		sceneManagerRef.current = sceneManager;
 
 		// Add event listeners to detect user interaction
@@ -336,12 +370,22 @@ export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			handleUserInteraction,
 		);
 
-		window.addEventListener("resize", sceneManager.handleResize);
+		// Use ResizeObserver for more accurate size updates
+		const resizeObserver = new ResizeObserver(() => {
+			updateCanvasSize();
+		});
+
+		if (containerRef.current) {
+			resizeObserver.observe(containerRef.current);
+		}
+
+		window.addEventListener("resize", updateCanvasSize);
 
 		setInited(true);
 
 		return () => {
-			window.removeEventListener("resize", sceneManager.handleResize);
+			window.removeEventListener("resize", updateCanvasSize);
+			resizeObserver.disconnect();
 			sceneManager.renderer.domElement.removeEventListener(
 				"pointerdown",
 				handleUserInteraction,
@@ -356,7 +400,7 @@ export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			);
 			sceneManager.dispose();
 		};
-	}, []);
+	}, [updateCanvasSize]);
 
 	const executeCode = useCallback(() => {
 		if (!sceneManagerRef.current) {
@@ -416,23 +460,13 @@ export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 			// Listen for messages from worker
 			worker.onmessage = (e) => {
 				const data = e.data;
-				const Y_OFFSET = 10; // ai likes placing things below origin
 
 				if (data.action === "setBlock") {
 					const { x, y, z, blockType } = data.params;
-					queue.push(["setBlock", x, y + Y_OFFSET, z, blockType]);
+					queue.push(["setBlock", x, y, z, blockType]);
 				} else if (data.action === "fill") {
 					const { x1, y1, z1, x2, y2, z2, blockType } = data.params;
-					queue.push([
-						"fill",
-						x1,
-						y1 + Y_OFFSET,
-						z1,
-						x2,
-						y2 + Y_OFFSET,
-						z2,
-						blockType,
-					]);
+					queue.push(["fill", x1, y1, z1, x2, y2, z2, blockType]);
 				} else if (data.action === "complete") {
 					clearTimeout(timeoutId);
 					worker.terminate();
@@ -475,6 +509,7 @@ export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 		}
+		sceneManagerRef.current.handleResize();
 	}, [code, generationId]);
 
 	// Execute user code whenever code changes
@@ -482,11 +517,18 @@ export const SceneRenderer = ({ code, generationId }: SceneRendererProps) => {
 		if (inited && code) {
 			executeCode();
 		}
+
+		return () => {
+			sceneManagerRef.current?.clearBlocks();
+		};
 	}, [inited, code, executeCode]);
 
 	return (
-		<div className="h-[600px] flex items-center justify-center bg-gray-50 rounded-md overflow-hidden border border-gray-200 shadow-inner">
-			<canvas ref={canvasRef} className="w-full h-full" />
+		<div
+			ref={containerRef}
+			className="h-full w-full flex items-center justify-center bg-gray-50 rounded-md overflow-hidden border border-gray-200 shadow-inner"
+		>
+			<canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
 		</div>
 	);
 };
