@@ -11,8 +11,10 @@ import type { Comparison } from "@/types/comparison";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
+
 const ITEMS_PER_PAGE_DESKTOP = 3;
 const ITEMS_PER_PAGE_MOBILE = 1;
+
 const Home = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const isMobile = useIsMobile();
@@ -100,52 +102,84 @@ const Home = () => {
   const handleError = () => {
     refetch();
   };
-  return <div className="min-h-screen bg-gray-50 flex flex-col">
-			<Header />
 
-			<main className="px-4 py-8 flex-grow flex flex-col">
-				<HeroSection />
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
 
-				<section>
-					<div className="mb-8">
-						<div className="flex justify-between items-center mb-2">
-							<h2 className="text-2xl font-bold text-gray-800">
-								Recent generations
-							</h2>
-							<div className="flex items-center gap-2">
-								<Button variant="outline" size="sm" onClick={goToPrevPage} disabled={currentPage === 0 || isLoading}>
-									<ArrowLeft className="h-4 w-4" />
-								</Button>
-								<span className="text-sm text-gray-500">
-									Page {currentPage + 1}
-								</span>
-								<Button variant="outline" size="sm" onClick={goToNextPage} disabled={!comparisons || comparisons.length < maxItemsPerPage || isLoading}>
-									<ArrowRight className="h-4 w-4" />
-								</Button>
-							</div>
-						</div>
+      <main className="px-4 py-8 flex-grow flex flex-col">
+        <HeroSection />
 
-						{isLoading ? <LoadingState /> : error ? <ErrorState error={(error as Error).message} onReset={handleError} /> : !comparisons || comparisons.length === 0 ? <div className="text-center py-12">
-								<p className="text-gray-500 mb-4">No comparisons found</p>
-								<Button onClick={() => document.querySelector("input")?.focus()} className="bg-green-800 hover:bg-green-900 text-white">
-									Create Your First Comparison
-								</Button>
-							</div> : <div className="space-y-8">
-								{comparisons.map(comparison => <VoteComparison key={comparison.id} comparisonId={comparison.id} />)}
-							</div>}
-					</div>
-				</section>
+        <section>
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-2xl font-bold text-foreground">
+                Recent generations
+              </h2>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={goToPrevPage} 
+                  disabled={currentPage === 0 || isLoading}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage + 1}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={goToNextPage} 
+                  disabled={!comparisons || comparisons.length < maxItemsPerPage || isLoading}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
-				<section>
-					<div className="flex justify-center">
-						<Button variant="outline" size="lg" onClick={() => setCurrentPage(c => c + 1)} className="text-white hover:text-white text-xl py-6 px-12 bg-green-900 hover:bg-green-800">
-							Next
-						</Button>
-					</div>
-				</section>
-			</main>
+            {isLoading ? (
+              <LoadingState />
+            ) : error ? (
+              <ErrorState error={(error as Error).message} onReset={handleError} />
+            ) : !comparisons || comparisons.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">No comparisons found</p>
+                <Button 
+                  onClick={() => document.querySelector("input")?.focus()} 
+                  className="bg-primary hover:bg-primary/90 text-white"
+                >
+                  Create Your First Comparison
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {comparisons.map(comparison => (
+                  <VoteComparison key={comparison.id} comparisonId={comparison.id} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
-			<Footer />
-		</div>;
+        <section>
+          <div className="flex justify-center">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              onClick={() => setCurrentPage(c => c + 1)} 
+              className="text-primary-foreground hover:text-primary-foreground text-xl py-6 px-12 bg-primary hover:bg-primary/90"
+            >
+              Next
+            </Button>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </div>
+  );
 };
+
 export default Home;
