@@ -214,3 +214,95 @@ export const getModelComparisons = async (modelName: string, page = 1, pageSize 
 
   return { data: comparisons, count: count || 0 };
 };
+
+// New functions for comments
+
+export interface Comment {
+  id: string;
+  comparison_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user_name?: string; // Will be populated when fetching comments
+}
+
+export const getComparisonComments = async (comparisonId: string) => {
+  const { data, error } = await supabase
+    .from("mc-comments")
+    .select("*")
+    .eq("comparison_id", comparisonId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  // Fetch user information for all comments
+  const userIds = data.map(comment => comment.user_id);
+  const uniqueUserIds = [...new Set(userIds)];
+
+  if (uniqueUserIds.length > 0) {
+    const { data: userData, error: userError } = await supabase
+      .from("user")
+      .select("user_id, name")
+      .in("user_id", uniqueUserIds);
+
+    if (!userError && userData) {
+      // Create a map of user_id to name
+      const userMap = userData.reduce((acc, user) => {
+        acc[user.user_id] = user.name || "Anonymous User";
+        return acc;
+      }, {} as Record<string, string>);
+
+      // Add user_name to each comment
+      return data.map(comment => ({
+        ...comment,
+        user_name: userMap[comment.user_id] || "Anonymous User"
+      }));
+    }
+  }
+
+  return data;
+};
+
+export const addComment = async (comparisonId: string, content: string) => {
+  const { data: userData } = await supabase.auth.getUser();
+  
+  if (!userData.user) {
+    throw new Error("User must be logged in to comment");
+  }
+  
+  const { data, error } = await supabase
+    .from("mc-comments")
+    .insert({
+      comparison_id: comparisonId,
+      content
+    })
+    .select();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data[0];
+};
+
+export const deleteComment = async (commentId: string) => {
+  const { data: userData } = await supabase.auth.getUser();
+  
+  if (!userData.user) {
+    throw new Error("User must be logged in to delete a comment");
+  }
+  
+  const { error } = await supabase
+    .from("mc-comments")
+    .delete()
+    .eq("id", commentId)
+    .eq("user_id", userData.user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return true;
+};

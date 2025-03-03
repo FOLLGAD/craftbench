@@ -6,6 +6,15 @@ export type Generation = {
   generated_code: string;
 };
 
+export type Comment = {
+  id: string;
+  user_id: string;
+  comparison_id: string;
+  content: string;
+  created_at: string;
+  user_name?: string;
+};
+
 export type Comparison = {
   id: string;
   generation_a_id: string;
@@ -16,4 +25,5 @@ export type Comparison = {
   votes: {
     [key: string]: number;
   };
+  comments?: Comment[];
 };
