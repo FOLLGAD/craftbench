@@ -72,9 +72,13 @@ const Leaderboard = () => {
 
 	if (isLoading) {
 		return (
-			<div className="container mx-auto py-10">
-				<h1 className="text-3xl font-bold mb-6">Model Leaderboard</h1>
-				<p>Loading model statistics...</p>
+			<div className="min-h-screen bg-gray-50 flex flex-col w-full">
+				<Header />
+				<div className="container mx-auto py-10 flex-grow">
+					<h1 className="text-3xl font-bold mb-6">Model Leaderboard</h1>
+					<p>Loading model statistics...</p>
+				</div>
+				<Footer />
 			</div>
 		);
 	}

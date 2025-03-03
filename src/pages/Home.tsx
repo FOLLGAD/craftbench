@@ -116,7 +116,7 @@ const Home = () => {
 		refetch();
 	};
 	return (
-		<div className="min-h-screen bg-gray-50 flex flex-col px-1">
+		<div className="min-h-screen bg-gray-50 flex flex-col">
 			<Header />
 
 			<main className="md:px-4 py-8 flex-grow flex flex-col">
