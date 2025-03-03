@@ -7,8 +7,8 @@ const LoadingState = () => {
   
   useEffect(() => {
     const timer = setInterval(() => {
-      setSecondsElapsed(prev => prev + 0.1);
-    }, 100);
+      setSecondsElapsed(prev => prev + 0.01);
+    }, 10);
     
     return () => clearInterval(timer);
   }, []);

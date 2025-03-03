@@ -20,8 +20,8 @@ const HeroSection = () => {
     if (creatingComparison) {
       setSecondsElapsed(0);
       timer = window.setInterval(() => {
-        setSecondsElapsed(prev => prev + 0.1);
-      }, 100);
+        setSecondsElapsed(prev => prev + 0.01);
+      }, 10);
     }
     
     return () => {
