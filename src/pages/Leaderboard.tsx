@@ -1,103 +1,68 @@
 import Header from "@/components/compare/Header";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getAllModelStats } from "@/lib/models";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Medal, Trophy } from "lucide-react";
 import { useState } from "react";
 import Footer from "@/components/common/Footer";
-
 type SortField = "elo" | "wins" | "losses" | "winRate";
 type SortDirection = "asc" | "desc";
-
 const Leaderboard = () => {
-	const [sortField, setSortField] = useState<SortField>("elo");
-	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-
-	const {
-		data: modelStats,
-		isLoading,
-		error,
-	} = useQuery({
-		queryKey: ["model-stats"],
-		queryFn: getAllModelStats,
-	});
-
-	const handleSort = (field: SortField) => {
-		if (field === sortField) {
-			setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-		} else {
-			setSortField(field);
-			setSortDirection("desc");
-		}
-	};
-
-	const sortedModels = modelStats
-		? [...modelStats].sort((a, b) => {
-				const multiplier = sortDirection === "asc" ? 1 : -1;
-				return (a[sortField] - b[sortField]) * multiplier;
-			})
-		: [];
-
-	const getTopModels = (field: SortField, count = 3) => {
-		if (!modelStats) return [];
-		return [...modelStats].sort((a, b) => b[field] - a[field]).slice(0, count);
-	};
-
-	const topEloModels = getTopModels("elo");
-	const topWinRateModels = getTopModels("winRate");
-
-	const getSortIcon = (field: SortField) => {
-		if (field !== sortField) return null;
-		return sortDirection === "asc" ? (
-			<ArrowUp className="h-4 w-4" />
-		) : (
-			<ArrowDown className="h-4 w-4" />
-		);
-	};
-
-	if (isLoading) {
-		return (
-			<div className="min-h-screen bg-gray-50 flex flex-col w-full">
+  const [sortField, setSortField] = useState<SortField>("elo");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const {
+    data: modelStats,
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ["model-stats"],
+    queryFn: getAllModelStats
+  });
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+  const sortedModels = modelStats ? [...modelStats].sort((a, b) => {
+    const multiplier = sortDirection === "asc" ? 1 : -1;
+    return (a[sortField] - b[sortField]) * multiplier;
+  }) : [];
+  const getTopModels = (field: SortField, count = 3) => {
+    if (!modelStats) return [];
+    return [...modelStats].sort((a, b) => b[field] - a[field]).slice(0, count);
+  };
+  const topEloModels = getTopModels("elo");
+  const topWinRateModels = getTopModels("winRate");
+  const getSortIcon = (field: SortField) => {
+    if (field !== sortField) return null;
+    return sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+  };
+  if (isLoading) {
+    return <div className="min-h-screen bg-gray-50 flex flex-col w-full">
 				<Header />
 				<div className="container mx-auto py-10 flex-grow">
 					<h1 className="text-3xl font-bold mb-6">Model Leaderboard</h1>
 					<p>Loading model statistics...</p>
 				</div>
 				<Footer />
-			</div>
-		);
-	}
-
-	if (error) {
-		return (
-			<div className="container mx-auto py-10">
+			</div>;
+  }
+  if (error) {
+    return <div className="container mx-auto py-10">
 				<h1 className="text-3xl font-bold mb-6">Model Leaderboard</h1>
 				<p className="text-red-500">
 					Error loading model statistics: {(error as Error).message}
 				</p>
-			</div>
-		);
-	}
-
-	return (
-		<div className="min-h-screen bg-gray-50 flex flex-col">
+			</div>;
+  }
+  return <div className="min-h-screen bg-gray-50 flex flex-col">
 			<Header />
-			<div className="container mx-auto py-10 flex-grow">
+			<div className="container mx-auto py-10 flex-grow bg-slate-950">
 				<h1 className="text-3xl font-bold mb-6">Model Leaderboard</h1>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -112,20 +77,10 @@ const Leaderboard = () => {
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							{topEloModels.map((model, index) => (
-								<div
-									key={model.modelName}
-									className="flex items-center justify-between mb-4 last:mb-0"
-								>
+							{topEloModels.map((model, index) => <div key={model.modelName} className="flex items-center justify-between mb-4 last:mb-0">
 									<div className="flex items-center gap-3">
 										<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
-											{index === 0 ? (
-												<Medal className="h-4 w-4 text-yellow-500" />
-											) : index === 1 ? (
-												<Medal className="h-4 w-4 text-gray-400" />
-											) : (
-												<Medal className="h-4 w-4 text-amber-700" />
-											)}
+											{index === 0 ? <Medal className="h-4 w-4 text-yellow-500" /> : index === 1 ? <Medal className="h-4 w-4 text-gray-400" /> : <Medal className="h-4 w-4 text-amber-700" />}
 										</div>
 										<div>
 											<p className="font-medium">{model.modelName}</p>
@@ -135,8 +90,7 @@ const Leaderboard = () => {
 										</div>
 									</div>
 									<div className="text-xl font-bold">{model.elo}</div>
-								</div>
-							))}
+								</div>)}
 						</CardContent>
 					</Card>
 
@@ -151,20 +105,10 @@ const Leaderboard = () => {
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							{topWinRateModels.map((model, index) => (
-								<div
-									key={model.modelName}
-									className="flex items-center justify-between mb-4 last:mb-0"
-								>
+							{topWinRateModels.map((model, index) => <div key={model.modelName} className="flex items-center justify-between mb-4 last:mb-0">
 									<div className="flex items-center gap-3">
 										<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
-											{index === 0 ? (
-												<Medal className="h-4 w-4 text-yellow-500" />
-											) : index === 1 ? (
-												<Medal className="h-4 w-4 text-gray-400" />
-											) : (
-												<Medal className="h-4 w-4 text-amber-700" />
-											)}
+											{index === 0 ? <Medal className="h-4 w-4 text-yellow-500" /> : index === 1 ? <Medal className="h-4 w-4 text-gray-400" /> : <Medal className="h-4 w-4 text-amber-700" />}
 										</div>
 										<div>
 											<p className="font-medium">{model.modelName}</p>
@@ -174,8 +118,7 @@ const Leaderboard = () => {
 										</div>
 									</div>
 									<div className="text-xl font-bold">{model.winRate}%</div>
-								</div>
-							))}
+								</div>)}
 						</CardContent>
 					</Card>
 				</div>
@@ -200,34 +143,22 @@ const Leaderboard = () => {
 										<TableRow>
 											<TableHead>Rank</TableHead>
 											<TableHead>Model</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("elo")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("elo")}>
 												<div className="flex items-center gap-1">
 													Elo {getSortIcon("elo")}
 												</div>
 											</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("wins")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("wins")}>
 												<div className="flex items-center gap-1">
 													Wins {getSortIcon("wins")}
 												</div>
 											</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("losses")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("losses")}>
 												<div className="flex items-center gap-1">
 													Losses {getSortIcon("losses")}
 												</div>
 											</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("winRate")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("winRate")}>
 												<div className="flex items-center gap-1">
 													Win Rate {getSortIcon("winRate")}
 												</div>
@@ -235,8 +166,7 @@ const Leaderboard = () => {
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{sortedModels.map((model, index) => (
-											<TableRow key={model.modelName}>
+										{sortedModels.map((model, index) => <TableRow key={model.modelName}>
 												<TableCell>{index + 1}</TableCell>
 												<TableCell className="font-medium">
 													{model.modelName}
@@ -245,8 +175,7 @@ const Leaderboard = () => {
 												<TableCell>{model.wins}</TableCell>
 												<TableCell>{model.losses}</TableCell>
 												<TableCell>{model.winRate}%</TableCell>
-											</TableRow>
-										))}
+											</TableRow>)}
 									</TableBody>
 								</Table>
 							</CardContent>
@@ -267,34 +196,22 @@ const Leaderboard = () => {
 										<TableRow>
 											<TableHead>Rank</TableHead>
 											<TableHead>Model</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("elo")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("elo")}>
 												<div className="flex items-center gap-1">
 													Elo {getSortIcon("elo")}
 												</div>
 											</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("wins")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("wins")}>
 												<div className="flex items-center gap-1">
 													Wins {getSortIcon("wins")}
 												</div>
 											</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("losses")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("losses")}>
 												<div className="flex items-center gap-1">
 													Losses {getSortIcon("losses")}
 												</div>
 											</TableHead>
-											<TableHead
-												className="cursor-pointer"
-												onClick={() => handleSort("winRate")}
-											>
+											<TableHead className="cursor-pointer" onClick={() => handleSort("winRate")}>
 												<div className="flex items-center gap-1">
 													Win Rate {getSortIcon("winRate")}
 												</div>
@@ -302,8 +219,7 @@ const Leaderboard = () => {
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{sortedModels.slice(0, 10).map((model, index) => (
-											<TableRow key={model.modelName}>
+										{sortedModels.slice(0, 10).map((model, index) => <TableRow key={model.modelName}>
 												<TableCell>{index + 1}</TableCell>
 												<TableCell className="font-medium">
 													{model.modelName}
@@ -312,8 +228,7 @@ const Leaderboard = () => {
 												<TableCell>{model.wins}</TableCell>
 												<TableCell>{model.losses}</TableCell>
 												<TableCell>{model.winRate}%</TableCell>
-											</TableRow>
-										))}
+											</TableRow>)}
 									</TableBody>
 								</Table>
 							</CardContent>
@@ -322,8 +237,6 @@ const Leaderboard = () => {
 				</Tabs>
 			</div>
 			<Footer />
-		</div>
-	);
+		</div>;
 };
-
 export default Leaderboard;
