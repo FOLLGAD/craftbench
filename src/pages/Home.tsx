@@ -103,7 +103,7 @@ const Home = () => {
   return <div className="min-h-screen bg-gray-50 flex flex-col">
 			<Header />
 
-			<main className="md:px-4 py-8 flex-grow flex flex-col">
+			<main className="px-4 py-8 flex-grow flex flex-col">
 				<HeroSection />
 
 				<section>
