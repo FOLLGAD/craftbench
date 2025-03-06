@@ -144,6 +144,7 @@ export type Database = {
           generation_b_id: string
           id: string
           prompt: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -151,6 +152,7 @@ export type Database = {
           generation_b_id: string
           id?: string
           prompt: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -158,6 +160,7 @@ export type Database = {
           generation_b_id?: string
           id?: string
           prompt?: string
+          user_id?: string | null
         }
         Relationships: [
           {

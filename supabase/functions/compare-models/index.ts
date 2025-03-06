@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.204.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -48,7 +47,7 @@ Use ONLY vanilla JavaScript. Do not use any external libraries, frameworks, or d
 1. setBlock(x, y, z, material) - sets a single block
 2. fill(x1, y1, z1, x2, y2, z2, material) - fills a rectangular area
 
-IMPORTANT: Stay within the coordinate range of -20 to 20 for all x, y, and z values. Do not place blocks outside this range.
+IMPORTANT: Stay within the coordinate range of -50 to 50 for all x, y, and z values. Do not place blocks outside this range.
 
 Your materials are:
 ${AVAILABLE_MATERIALS.join(", ")}
@@ -61,7 +60,7 @@ fill(1, 0, 0, 2, 5, 1, "stone");
 You should be creative, but remember: respond ONLY with plain JavaScript code, using ONLY vanilla JS and the two provided functions.
 Be creative with the materials and shapes, this is a competition! The best design wins!
 
-Use the space you have. Don't be afraid to use the entire 40x40x40 space! More detail is generally better.
+Use the space you have. Don't be afraid to use the entire 100x100x100 space! More detail is generally better.
 `.trim();
 };
 
