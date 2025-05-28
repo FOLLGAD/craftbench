@@ -1,3 +1,4 @@
+
 import ErrorState from "@/components/compare/ErrorState";
 import Header from "@/components/compare/Header";
 import LoadingState from "@/components/compare/LoadingState";
@@ -12,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
-const ITEMS_PER_PAGE_DESKTOP = 3;
+const ITEMS_PER_PAGE_DESKTOP = 5;
 const ITEMS_PER_PAGE_MOBILE = 1;
 
 const Home = () => {
