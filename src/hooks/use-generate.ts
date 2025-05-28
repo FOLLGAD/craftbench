@@ -21,11 +21,17 @@ export const useGenerate = () => {
 			const startTime = performance.now();
 			console.log(`Generation started at ${new Date().toISOString()}`);
 			
+			// Get the current session to pass the auth token
+			const { data: { session } } = await supabase.auth.getSession();
+			
 			// Use supabase's functions.invoke instead of fetch for better error handling
 			const { data, error: functionError } = await supabase.functions.invoke(
 				"compare-models",
 				{
 					body: { prompt },
+					headers: session?.access_token ? {
+						Authorization: `Bearer ${session.access_token}`
+					} : undefined,
 				},
 			);
 

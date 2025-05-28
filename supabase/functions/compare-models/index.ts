@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.204.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -305,18 +306,20 @@ async function storeComparisonInDatabase(
   generation1: any,
   generation2: any,
   prompt: string,
-  supabase: any
+  supabase: any,
+  userId?: string
 ) {
   try {
     // Generate UUID for the comparison
     const comparisonId = crypto.randomUUID();
 
-    // Create the comparison object
+    // Create the comparison object with user_id if available
     const comparisonObject = {
       id: comparisonId,
       generation_a_id: generation1.id,
       generation_b_id: generation2.id,
       prompt,
+      user_id: userId || null,
     };
 
     // Insert the comparison into the database
@@ -397,6 +400,23 @@ serve(async (req) => {
     // Create Supabase client
     const supabase = createSupabaseClient();
 
+    // Get the current user from the Authorization header
+    const authHeader = req.headers.get('Authorization');
+    let currentUserId = null;
+    
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+        if (!userError && user) {
+          currentUserId = user.id;
+          console.log("User authenticated:", currentUserId);
+        }
+      } catch (error) {
+        console.log("Error getting user from token:", error);
+      }
+    }
+
     // Randomly select two different models
     const modelChoices = await selectRandomModels();
 
@@ -424,7 +444,8 @@ serve(async (req) => {
         generation1,
         generation2,
         prompt,
-        supabase
+        supabase,
+        currentUserId
       );
 
       return new Response(
