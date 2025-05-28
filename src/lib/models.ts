@@ -4,11 +4,7 @@ import type { Comparison } from "@/types/comparison";
 export const getComparison = async (comparisonId: string) => {
   const { data, error } = await supabase
     .from("mc-comparisons")
-    .select(`
-      *,
-      generation_a:mc-generations!mc-comparisons_generation_a_id_fkey(*),
-      generation_b:mc-generations!mc-comparisons_generation_b_id_fkey(*)
-    `)
+    .select("*, generation_a:mc-generations!mc-comparisons_generation_a_id_fkey(*), generation_b:mc-generations!mc-comparisons_generation_b_id_fkey(*)")
     .eq("id", comparisonId)
     .single();
   if (error) {
@@ -196,11 +192,7 @@ export const getModelComparisons = async (modelName: string, page = 1, pageSize 
   // Get comparisons where this model was either generation_a or generation_b
   const { data: comparisons, error: comparisonsError, count } = await supabase
     .from("mc-comparisons")
-    .select(`
-      *,
-      generation_a:mc-generations!mc-comparisons_generation_a_id_fkey(*),
-      generation_b:mc-generations!mc-comparisons_generation_b_id_fkey(*)
-    `, { count: 'exact' })
+    .select("*, generation_a:mc-generations!mc-comparisons_generation_a_id_fkey(*), generation_b:mc-generations!mc-comparisons_generation_b_id_fkey(*)", { count: 'exact' })
     .or(`generation_a_id.in.(${generationIds.join(',')}),generation_b_id.in.(${generationIds.join(',')})`)
     .order('created_at', { ascending: false })
     .range((page - 1) * pageSize, page * pageSize - 1);
