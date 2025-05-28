@@ -1,96 +1,90 @@
 
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import Header from "@/components/compare/Header";
-import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles } from "lucide-react";
-import { SceneRenderer } from "@/components/SceneRenderer";
-import { useParams } from "react-router-dom";
-import { useComparison } from "@/hooks/use-comparison";
+import Footer from "@/components/common/Footer";
+import { useGenerate } from "@/hooks/use-generate";
+import { Loader2 } from "lucide-react";
 
 const Generate = () => {
-  const {
-    comparisonId
-  } = useParams();
-  const {
-    comparison,
-    isLoading,
-    error
-  } = useComparison(comparisonId || "");
-  const [winner, setWinner] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (comparison?.likes) {
-      const modelNames = Object.keys(comparison.likes);
-      if (modelNames.length > 0) {
-        const winnerModel = modelNames.reduce((a, b) => comparison.likes[a] > comparison.likes[b] ? a : b);
-        setWinner(winnerModel);
-      }
+  const navigate = useNavigate();
+  const [prompt, setPrompt] = useState("");
+  const { generate } = useGenerate();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast.error("Please enter a prompt");
+      return;
     }
-  }, [comparison]);
-  
-  if (isLoading) {
-    return <div>
-        <Header />
-        <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
-          <div className="max-w-3xl sm:p-8 w-full">
-            <h1 className="text-4xl font-light mb-8 text-center text-white">
-              Loading...
-            </h1>
-          </div>
-        </section>
-      </div>;
-  }
-  
-  if (error) {
-    return <div>
-        <Header />
-        <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
-          <div className="max-w-3xl sm:p-8 w-full">
-            <h1 className="text-4xl font-light mb-8 text-center text-white">
-              Error: {error}
-            </h1>
-          </div>
-        </section>
-      </div>;
-  }
-  
-  if (!comparison) {
-    return <div>
-        <Header />
-        <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
-          <div className="max-w-3xl sm:p-8 w-full">
-            <h1 className="text-4xl font-light mb-8 text-center text-white">
-              Comparison not found
-            </h1>
-          </div>
-        </section>
-      </div>;
-  }
-  
-  return <div>
+
+    setIsLoading(true);
+    try {
+      const comparison = await generate(prompt);
+      if (comparison) {
+        navigate(`/compare/${comparison.id}`);
+      }
+    } catch (error) {
+      console.error("Generation error:", error);
+      toast.error("Failed to generate comparison");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col">
       <Header />
-      <section className="mb-12 pt-6 w-full flex justify-center font-light text-white">
-        <div className="max-w-5xl sm:p-8 w-full">
-          <h1 className="text-2xl font-bold mb-8 text-left text-white">
-            {comparison.prompt}
-          </h1>
-          <div className="grid grid-cols-2 gap-4">
-            {Object.entries(comparison.images).map(([modelName, imageUrl]) => (
-              <div key={modelName} className="relative">
-                <SceneRenderer sceneUrl={imageUrl as string} />
-                <div className="absolute bottom-2 left-2 bg-black/50 text-white p-1 rounded-md text-sm">
-                  {modelName}
+      
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold mb-6">Generate New Comparison</h1>
+          
+          <Card className="p-6">
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="prompt" className="block text-sm font-medium mb-2">
+                  Enter your prompt (max 120 characters)
+                </label>
+                <Textarea
+                  id="prompt"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value.slice(0, 120))}
+                  placeholder="e.g., Create a medieval castle with towers"
+                  className="min-h-[100px]"
+                  maxLength={120}
+                />
+                <div className="text-sm text-muted-foreground mt-1">
+                  {prompt.length}/120 characters
                 </div>
-                {winner === modelName && <div className="absolute top-2 right-2 bg-yellow-500 text-black p-1 rounded-md text-sm">
-                    Winner
-                  </div>}
               </div>
-            ))}
-          </div>
+              
+              <Button
+                onClick={handleGenerate}
+                disabled={isLoading || !prompt.trim()}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Comparison"
+                )}
+              </Button>
+            </div>
+          </Card>
         </div>
-      </section>
-    </div>;
+      </main>
+      
+      <Footer />
+    </div>
+  );
 };
 
 export default Generate;
