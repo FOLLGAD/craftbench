@@ -10,6 +10,7 @@ import Compare from "./pages/Compare";
 import Home from "./pages/Home";
 import Leaderboard from "./pages/Leaderboard";
 import ModelDetail from "./pages/ModelDetail";
+import MyGenerations from "./pages/MyGenerations";
 import NotFound from "./pages/NotFound";
 import Playground from "./pages/Playground";
 import { ThemeProvider } from "./components/theme-provider";
@@ -33,6 +34,7 @@ const App = () => (
 							/>
 							<Route path="/leaderboard" element={<Leaderboard />} />
 							<Route path="/models" element={<ModelDetail />} />
+							<Route path="/my-generations" element={<MyGenerations />} />
 							<Route path="/playground" element={<Playground />} />
 							{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
 							<Route path="*" element={<NotFound />} />
