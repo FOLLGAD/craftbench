@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 const MyGenerations = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 5;
 
   const { data: generations, isLoading, error } = useQuery({
     queryKey: ['my-generations', page],
