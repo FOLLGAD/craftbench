@@ -7,8 +7,8 @@ export const getComparison = async (comparisonId: string) => {
     .from("mc-comparisons")
     .select(`
       *,
-      generation_a:mc_generations!generation_a_id(*),
-      generation_b:mc_generations!generation_b_id(*)
+      generation_a:mc-generations!generation_a_id(*),
+      generation_b:mc-generations!generation_b_id(*)
     `)
     .eq("id", comparisonId)
     .single();
@@ -199,8 +199,8 @@ export const getModelComparisons = async (modelName: string, page = 1, pageSize 
     .from("mc-comparisons")
     .select(`
       *,
-      generation_a:mc_generations!generation_a_id(*),
-      generation_b:mc_generations!generation_b_id(*)
+      generation_a:mc-generations!generation_a_id(*),
+      generation_b:mc-generations!generation_b_id(*)
     `, { count: 'exact' })
     .or(`generation_a_id.in.(${generationIds.join(',')}),generation_b_id.in.(${generationIds.join(',')})`)
     .order('created_at', { ascending: false })
