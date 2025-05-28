@@ -20,9 +20,12 @@ export type Comparison = {
   generation_a_id: string;
   generation_b_id: string;
   prompt: string;
-  generations: Generation[];
-  voted: boolean;
-  votes: {
+  created_at?: string;
+  generation_a?: Generation;
+  generation_b?: Generation;
+  generations?: Generation[];
+  voted?: boolean;
+  votes?: {
     [key: string]: number;
   };
   comments?: Comment[];

@@ -13,10 +13,12 @@ import { getComparison, getComparisonVotes, getModelRatings, getVote } from "../
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
+
 interface VoteComparisonProps {
   comparisonId: string;
   isVoting?: boolean;
 }
+
 const VoteComparison = ({
   comparisonId,
   isVoting: externalIsVoting = false
@@ -74,7 +76,12 @@ const VoteComparison = ({
     queryKey: ["comparison-votes", comparisonId],
     queryFn: () => getComparisonVotes(comparisonId)
   });
-  const generations = useMemo(() => [comparison.data?.generation_a, comparison.data?.generation_b].filter(Boolean).sort(() => Math.random() - 0.5), [comparison.data]);
+  const generations = useMemo(() => {
+    if (!comparison.data || !comparison.data.generation_a || !comparison.data.generation_b) {
+      return [];
+    }
+    return [comparison.data.generation_a, comparison.data.generation_b].filter(Boolean).sort(() => Math.random() - 0.5);
+  }, [comparison.data]);
   const modelNames = generations.map(gen => gen.model_name);
   const modelRatings = useQuery({
     queryKey: ["model-ratings", ...modelNames],
