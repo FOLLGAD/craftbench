@@ -192,9 +192,34 @@ async function generateCodeWithModel(
     const data = await response.json();
     console.log(`Full response from ${modelId}:`, JSON.stringify(data));
 
+    // Enhanced error checking and logging
+    if (!data) {
+      console.error(`No data received from ${modelId}`);
+      throw new Error(`No response data from ${modelId}`);
+    }
+
+    if (!data.choices) {
+      console.error(`No choices array in response from ${modelId}. Full response:`, JSON.stringify(data, null, 2));
+      throw new Error(`Invalid response format from ${modelId}: missing choices array`);
+    }
+
+    if (!Array.isArray(data.choices) || data.choices.length === 0) {
+      console.error(`Empty or invalid choices array from ${modelId}. Choices:`, JSON.stringify(data.choices, null, 2));
+      throw new Error(`No choices available in response from ${modelId}`);
+    }
+
+    if (!data.choices[0]) {
+      console.error(`First choice is undefined from ${modelId}. Choices array:`, JSON.stringify(data.choices, null, 2));
+      throw new Error(`First choice is undefined from ${modelId}`);
+    }
+
+    if (!data.choices[0].message) {
+      console.error(`No message in first choice from ${modelId}. First choice:`, JSON.stringify(data.choices[0], null, 2));
+      throw new Error(`No message in response from ${modelId}`);
+    }
+
     // Get the raw content from the LLM
-    const rawContent =
-      data.choices[0]?.message?.content || "// No code generated";
+    const rawContent = data.choices[0].message.content || "// No code generated";
 
     // Extract code if the content contains code fences
     const generatedCode = extractCodeFromResponse(rawContent);
@@ -209,6 +234,11 @@ async function generateCodeWithModel(
     return storeGenerationInDatabase(modelId, prompt, generatedCode, supabase);
   } catch (error) {
     console.error(`Error generating with ${modelId}:`, error);
+    console.error(`Error details for ${modelId}:`, {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     return storeFallbackGeneration(modelId, prompt, error.message, supabase);
   }
 }
